@@ -1,0 +1,9 @@
+[submodule "ShutterEngine/Ext/glm"]
+	path = ShutterEngine/Ext/glm
+	url = https://github.com/g-truc/glm.git
+[submodule "ShutterEngine/Ext/Vulkan-Hpp"]
+	path = ShutterEngine/Ext/Vulkan-Hpp
+	url = https://github.com/KhronosGroup/Vulkan-Hpp.git
+[submodule "ShutterEngine/Ext/glfw"]
+	path = ShutterEngine/Ext/glfw
+	url = https://github.com/glfw/glfw.git
