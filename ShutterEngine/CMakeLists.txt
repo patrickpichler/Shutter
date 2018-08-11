@@ -1,0 +1,18 @@
+set(SRC_FOLDERS
+    Engine
+    Renderer
+)
+
+foreach(loop_var ${SRC_FOLDERS})
+    file(GLOB SOURCE ${CMAKE_CURRENT_SOURCE_DIR}/${loop_var}/*.cpp ${CMAKE_CURRENT_SOURCE_DIR}/${loop_var}/*.cc)
+    file(GLOB HEADER ${CMAKE_CURRENT_SOURCE_DIR}/${loop_var}/*.hpp ${CMAKE_CURRENT_SOURCE_DIR}/${loop_var}/*.h)
+
+    source_group("${loop_var}" FILES ${SOURCE} ${HEADER})
+
+    set(SOURCE_GLOBAL ${SOURCE_GLOBAL} ${SOURCE} ${HEADER} CACHE INTERNAL "")
+endforeach()
+
+
+set(SOURCE_GLOBAL ${SOURCE_GLOBAL} "${CMAKE_CURRENT_SOURCE_DIR}/App.cpp" CACHE INTERNAL "")
+set(SOURCE_GLOBAL ${SOURCE_GLOBAL} "${CMAKE_CURRENT_SOURCE_DIR}/Ext/stb_image.h" CACHE INTERNAL "")
+set(SOURCE_GLOBAL ${SOURCE_GLOBAL} "${CMAKE_CURRENT_SOURCE_DIR}/Ext/tiny_obj_loader.h" CACHE INTERNAL "")
