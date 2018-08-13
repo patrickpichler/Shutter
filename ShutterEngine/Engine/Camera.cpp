@@ -38,7 +38,7 @@ void Camera::Update(const double mouseX, const double mouseY, const Direction &d
 
 	_Front = glm::normalize(direction);
 
-	glm::vec3 movement;
+	glm::vec3 movement = { 0.0f, 0.0f, 0.0f };
 
 	if (dir.Up) {
 		movement = _Front * _TranslationSpeed;

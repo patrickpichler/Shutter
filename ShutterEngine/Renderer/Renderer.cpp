@@ -57,20 +57,20 @@ void Renderer::Init(GLFWwindow* window, const uint16_t width, const uint16_t hei
 	_SkyboxMaterial.BindShader(vertexSky);
 	_SkyboxMaterial.BindShader(fragmentSky);
 
-	// Create and prepare the default material
-	Shader vertex(&_Device, "Vertex", "shaders/vert.spv", vk::ShaderStageFlagBits::eVertex);
-	Shader fragment(&_Device, "Fragment", "shaders/frag.spv", vk::ShaderStageFlagBits::eFragment);
+	//// Create and prepare the default material
+	//Shader vertex(&_Device, "Vertex", "shaders/vert.spv", vk::ShaderStageFlagBits::eVertex);
+	//Shader fragment(&_Device, "Fragment", "shaders/frag.spv", vk::ShaderStageFlagBits::eFragment);
 
-	_BasicMaterial = Material(
-		&_Device,
-		_Scene,
-		_ScreenSize.width,
-		_ScreenSize.height,
-		static_cast<uint32_t>(_SwapchainImageViews.size())
-	);
+	//_BasicMaterial = Material(
+	//	&_Device,
+	//	_Scene,
+	//	_ScreenSize.width,
+	//	_ScreenSize.height,
+	//	static_cast<uint32_t>(_SwapchainImageViews.size())
+	//);
 
-	_BasicMaterial.BindShader(vertex);
-	_BasicMaterial.BindShader(fragment);
+	//_BasicMaterial.BindShader(vertex);
+	//_BasicMaterial.BindShader(fragment);
 
 	// Load the cube object
 	{

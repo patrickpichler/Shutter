@@ -72,7 +72,7 @@ void Scene::CreateDescriptorSetLayout(const uint32_t nbImages)
 	vk::DescriptorSetLayoutBinding cameraInfo(0, vk::DescriptorType::eUniformBuffer, 1,  vk::ShaderStageFlagBits::eVertex);
 	vk::DescriptorSetLayoutBinding lightInfo(1, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eFragment);
 
-	std::vector<vk::DescriptorSetLayoutBinding> bindings{ cameraInfo, lightInfo };
+	std::vector<vk::DescriptorSetLayoutBinding> bindings{ cameraInfo /*, lightInfo*/ };
 
 
 	_DescriptorSetLayout = _Device->GetDevice().createDescriptorSetLayout(

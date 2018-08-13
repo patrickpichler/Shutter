@@ -41,7 +41,7 @@ void CubeTexture::TransferBufferToImage(const vk::CommandPool &cmdPool)
 		regions[0].bufferImageHeight = 0;
 		regions[0].imageSubresource.aspectMask = vk::ImageAspectFlagBits::eColor;
 		regions[0].imageSubresource.mipLevel = 0;
-		regions[0].imageSubresource.baseArrayLayer = 0;
+		regions[0].imageSubresource.baseArrayLayer = i;
 		regions[0].imageSubresource.layerCount = 1;
 		regions[0].imageOffset = { 0,0,0 };
 		regions[0].imageExtent = _Dimensions;

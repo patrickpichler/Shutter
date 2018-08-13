@@ -22,10 +22,10 @@ struct Vertex {
 		std::array<vk::VertexInputAttributeDescription, 5> attributeDescriptions;
 
 		attributeDescriptions[0] = vk::VertexInputAttributeDescription(0, 0, vk::Format::eR32G32B32Sfloat, offsetof(Vertex, position));
-		attributeDescriptions[1] = vk::VertexInputAttributeDescription(0, 1, vk::Format::eR32G32B32Sfloat, offsetof(Vertex, normal));
-		attributeDescriptions[2] = vk::VertexInputAttributeDescription(0, 2, vk::Format::eR32G32Sfloat, offsetof(Vertex, texCoord));
-		attributeDescriptions[3] = vk::VertexInputAttributeDescription(0, 3, vk::Format::eR32G32B32Sfloat, offsetof(Vertex, tangent));
-		attributeDescriptions[4] = vk::VertexInputAttributeDescription(0, 4, vk::Format::eR32G32B32Sfloat, offsetof(Vertex, bitangent));
+		attributeDescriptions[1] = vk::VertexInputAttributeDescription(1, 0, vk::Format::eR32G32B32Sfloat, offsetof(Vertex, normal));
+		attributeDescriptions[2] = vk::VertexInputAttributeDescription(2, 0, vk::Format::eR32G32Sfloat, offsetof(Vertex, texCoord));
+		attributeDescriptions[3] = vk::VertexInputAttributeDescription(3, 0, vk::Format::eR32G32B32Sfloat, offsetof(Vertex, tangent));
+		attributeDescriptions[4] = vk::VertexInputAttributeDescription(4, 0, vk::Format::eR32G32B32Sfloat, offsetof(Vertex, bitangent));
 
 		return attributeDescriptions;
 	}
