@@ -2,35 +2,54 @@
 
 #include <vulkan/vulkan.hpp>
 #include "DeviceHandler.h"
+#include <algorithm>
 
 class Buffer {
 public:
 	Buffer(){}
-	Buffer(
-		const Device &device,
-		const VkBufferUsageFlags usage,
+	explicit Buffer(
+		Device *device,
+		const vk::BufferUsageFlagBits usage,
 		const size_t size,
-		const VkSharingMode sharingMode = VK_SHARING_MODE_EXCLUSIVE
+		const vk::SharingMode sharingMode = vk::SharingMode::eExclusive
 	);
+	//Buffer(const Buffer& buffer) :
+	//	_Device(buffer._Device),
+	//	_Buffer(buffer._Buffer),
+	//	_Memory(buffer._Memory)
+	//{
 
-	void Copy(const Device &device, void *data, const size_t size);
+	//}
 
-	void Clean(const Device &device);
+	//Buffer& operator=(Buffer buffer)
+	//{
+	//	_Device = buffer._Device;
+	//	std::swap(_Buffer, buffer._Buffer);
+	//	std::swap(_Memory, buffer._Memory);
 
-	/// Deprecated
-	const VkBuffer &GetBuffer() const {
+	//	return *this;
+	//}
+
+	~Buffer() {
+		Clean();
+	}
+
+	void Copy(void *data, const size_t size);
+
+	void Clean();
+
+
+	const vk::Buffer &GetBuffer() const {
 		return _Buffer;
 	}
 
-	const vk::Buffer &GetBufferNew() const {
-		return vk::Buffer(_Buffer);
-	}
-
-	const VkDeviceMemory &GetMemory() const {
+	const vk::DeviceMemory &GetMemory() const {
 		return _Memory;
 	}
 
 protected:
-	VkBuffer _Buffer;
-	VkDeviceMemory _Memory;
+	Device *_Device;
+
+	vk::Buffer _Buffer;
+	vk::DeviceMemory _Memory;
 };

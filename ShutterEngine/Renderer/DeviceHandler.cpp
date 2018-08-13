@@ -3,84 +3,53 @@
 
 #include "Helpers.h"
 
-Device::Device(const VkPhysicalDevice & physicalDevice):
-	VulkanDevice(physicalDevice)
+Device::Device(const vk::PhysicalDevice & physicalDevice):
+	_PhysicalDevice(physicalDevice)
 {
-	vkGetPhysicalDeviceProperties(VulkanDevice, &DeviceProperties);
-	vkGetPhysicalDeviceFeatures(VulkanDevice, &DeviceFeatures);
+	_PhysicalDeviceProperties = _PhysicalDevice.getProperties();
+	_PhysicalDeviceFeatures = _PhysicalDevice.getFeatures();
 
-	uint32_t extensionCount = 0;
-	vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionCount, nullptr);
-	DeviceExtensions.resize(extensionCount);
-	vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionCount, DeviceExtensions.data());
+	_DeviceExtensions = _PhysicalDevice.enumerateDeviceExtensionProperties();
 
-	uint32_t queueFamilyCount = 0;
-	vkGetPhysicalDeviceQueueFamilyProperties(VulkanDevice, &queueFamilyCount, nullptr);
-	QueueFamilies.resize(queueFamilyCount);
-	vkGetPhysicalDeviceQueueFamilyProperties(VulkanDevice, &queueFamilyCount, QueueFamilies.data());
+	_QueueFamilyProperties = _PhysicalDevice.getQueueFamilyProperties();
 }
 
-void Device::Init(const DeviceRequestInfo& info, std::optional<std::reference_wrapper<VkSurfaceKHR>> surface)
+void Device::Init(const DeviceRequestInfo& info, optional_surface surface)
 {
 	PickQueueFamilyIndex(info, surface);
 
-	std::vector<VkDeviceQueueCreateInfo> deviceQueuesInfo;
+	std::vector<vk::DeviceQueueCreateInfo> deviceQueuesInfo;
 	for (const auto& id : GetQueueIndexSet()) {
 		float queuePrio = 1.0f;
-		VkDeviceQueueCreateInfo queueCreateInfo = { VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO };
-		queueCreateInfo.queueFamilyIndex = id;
-		queueCreateInfo.queueCount = 1;
-		queueCreateInfo.pQueuePriorities = &queuePrio;
-		deviceQueuesInfo.push_back(queueCreateInfo);
+		deviceQueuesInfo.push_back(vk::DeviceQueueCreateInfo{ {}, id, 1, &queuePrio });
 	}
 
-	VkPhysicalDeviceFeatures deviceFeatures = {};
+	vk::PhysicalDeviceFeatures deviceFeatures = {};
 
-	VkDeviceCreateInfo deviceInfo = { VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO };
+	vk::DeviceCreateInfo deviceInfo = {};
 	deviceInfo.pQueueCreateInfos = deviceQueuesInfo.data();
 	deviceInfo.queueCreateInfoCount = deviceQueuesInfo.size();
 	deviceInfo.pEnabledFeatures = &deviceFeatures;
 	deviceInfo.enabledExtensionCount = info.RequiredExtensions.size();
 	deviceInfo.ppEnabledExtensionNames = info.RequiredExtensions.data();
 
-	vk_expect_success(vkCreateDevice(VulkanDevice, &deviceInfo, nullptr, &LogicalDevice), "Fail to create logical device.");
+	_Device = _PhysicalDevice.createDevice(deviceInfo);
 
-	for (auto &queue : QueueList)
+	for (auto &queue : _Queues)
 	{
-		vkGetDeviceQueue(LogicalDevice, queue.second.Index, 0, &queue.second.VulkanQueue);
+		queue.second.VulkanQueue = _Device.getQueue(queue.second.Index, 0);
 	}
 }
 
 void Device::Clean()
 {
-	vkDestroyDevice(LogicalDevice, nullptr);
-}
-
-/// DEPRECATED
-const VkDevice & Device::GetLogicalDevice() const
-{
-	return LogicalDevice;
-}
-
-vk::Device & Device::GetLogicalDeviceNew() const
-{
-	return vk::Device(LogicalDevice);
-}
-
-const VkPhysicalDevice& Device::GetPhysicalDevice() const
-{
-	return VulkanDevice;
-}
-
-const Queue& Device::GetQueue(const E_QUEUE_TYPE queueType) const
-{
-	return QueueList.at(queueType);
+	//_Device.destroy();
 }
 
 std::set<uint32_t> Device::GetQueueIndexSet()
 {
 	std::set<uint32_t> uniqueQueueId;
-	for (const auto &queue : QueueList)
+	for (const auto &queue : _Queues)
 	{
 		uniqueQueueId.insert(queue.second.Index);
 	}
@@ -88,25 +57,25 @@ std::set<uint32_t> Device::GetQueueIndexSet()
 	return uniqueQueueId;
 }
 
-const bool Device::IsSuitable(const DeviceRequestInfo& info, std::optional<std::reference_wrapper<VkSurfaceKHR>> surface) const
+const bool Device::IsSuitable(const DeviceRequestInfo& info, optional_surface surface) const
 {
 	// Check that we got all the required extensions
 	for (const auto& extensionName : info.RequiredExtensions) {
 		auto it = std::find_if(
-			DeviceExtensions.begin(),
-			DeviceExtensions.end(),
-			[&extensionName](const VkExtensionProperties&  availableExtenion) {
+			_DeviceExtensions.begin(),
+			_DeviceExtensions.end(),
+			[&extensionName](const vk::ExtensionProperties&  availableExtenion) {
 				return std::strcmp(availableExtenion.extensionName, extensionName) == 0;
 			}
 		);
 
-		if (it == DeviceExtensions.end()) {
+		if (it == _DeviceExtensions.end()) {
 			return false;
 		}
 	}
 
-	// Check that we at least have a queue
-	if (QueueFamilies.size() == 0) {
+	// Check that we have at least a queue
+	if (_QueueFamilyProperties.size() == 0) {
 		return false;
 	}
 
@@ -114,17 +83,16 @@ const bool Device::IsSuitable(const DeviceRequestInfo& info, std::optional<std::
 	bool havePresentation = !info.SupportPresentation;
 	bool haveGraphics = !info.SupportGraphics;
 	uint32_t i = 0;
-	for (const auto &queueFamily : QueueFamilies) {
+	for (const auto &queueFamily : _QueueFamilyProperties) {
 		if (info.SupportPresentation && surface.has_value()) {
-			VkBool32 presentSupport = false;
-			vkGetPhysicalDeviceSurfaceSupportKHR(VulkanDevice, i, surface.value(), &presentSupport);
+			vk::Bool32 presentSupport = _PhysicalDevice.getSurfaceSupportKHR(i, surface.value());
 
 			if (presentSupport) {
 				havePresentation = true;
 			}
 		}
 		if (info.SupportGraphics) {
-			if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
+			if (queueFamily.queueFlags & vk::QueueFlagBits::eGraphics) {
 				haveGraphics = true;
 			}
 		}
@@ -134,29 +102,30 @@ const bool Device::IsSuitable(const DeviceRequestInfo& info, std::optional<std::
 	return havePresentation && haveGraphics;
 }
 
-void Device::PickQueueFamilyIndex(const DeviceRequestInfo& info, std::optional<std::reference_wrapper<VkSurfaceKHR>> surface)
+void Device::PickQueueFamilyIndex(const DeviceRequestInfo& info, optional_surface surface)
 {
+	// Look for a queue with present if we need one
 	uint32_t i = 0;
 	if (info.SupportPresentation && surface.has_value()) {
-		for (const auto &queueFamily : QueueFamilies) {
+		for (const auto &queueFamily : _QueueFamilyProperties) {
 
-			VkBool32 presentSupport = false;
-			vkGetPhysicalDeviceSurfaceSupportKHR(VulkanDevice, i, surface.value(), &presentSupport);
+			vk::Bool32 presentSupport = _PhysicalDevice.getSurfaceSupportKHR(i, surface.value());
 
 			if (presentSupport) {
 				Queue present = { i };
-				QueueList.emplace(PRESENT, present);
+				_Queues.emplace(PRESENT, present);
 				break;
 			}
 		}
 	}
 
+	// Look for a queue sith graphics if we need one
 	i = 0;
 	if (info.SupportGraphics) {
-		for (const auto &queueFamily : QueueFamilies) {
-			if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
+		for (const auto &queueFamily : _QueueFamilyProperties) {
+			if (queueFamily.queueFlags & vk::QueueFlagBits::eGraphics) {
 				Queue present = { i };
-				QueueList.emplace(GRAPHICS, present);
+				_Queues.emplace(GRAPHICS, present);
 				break;
 			}
 		}
@@ -164,17 +133,11 @@ void Device::PickQueueFamilyIndex(const DeviceRequestInfo& info, std::optional<s
 	}
 }
 
-Device DeviceHandler::GetDevice(const VkInstance& instance, const DeviceRequestInfo& info, std::optional<std::reference_wrapper<VkSurfaceKHR>> surface)
+Device Device::GetDevice(const vk::Instance &instance, const DeviceRequestInfo& info, optional_surface surface)
 {
 	uint32_t deviceCount = 0;
-	vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
-
-	if (deviceCount == 0) {
-		throw std::runtime_error("No Vulkan capable GPU detected");
-	}
-
-	std::vector<VkPhysicalDevice> physicalDeviceList(deviceCount);
-	vkEnumeratePhysicalDevices(instance, &deviceCount, physicalDeviceList.data());
+	std::vector<vk::PhysicalDevice> physicalDeviceList;
+	physicalDeviceList = instance.enumeratePhysicalDevices();
 
 	std::vector<Device> deviceList;
 

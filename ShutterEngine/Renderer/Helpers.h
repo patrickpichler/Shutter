@@ -1,7 +1,9 @@
 #pragma once
+#include <array>
 #include <vulkan/vulkan.h>
-#include "Buffer.h"
 #include <glm/glm.hpp>
+
+#include "Buffer.h"
 
 #define vk_expect_success(func, message) { \
 	if (func != VK_SUCCESS) { \
@@ -9,13 +11,12 @@
 	} \
 }
 
-static uint32_t findMemoryType(const Device& device, uint32_t typeFilter, VkMemoryPropertyFlags properties)
+static uint32_t findMemoryType(const Device& device, uint32_t typeFilter, vk::MemoryPropertyFlags properties)
 {
-	VkPhysicalDeviceMemoryProperties memProperties;
-	vkGetPhysicalDeviceMemoryProperties(device.GetPhysicalDevice(), &memProperties);
+	vk::PhysicalDeviceMemoryProperties memoryProperties = device.GetPhysicalDevice().getMemoryProperties();
 
-	for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
-		if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties) {
+	for (uint32_t i = 0; i < memoryProperties.memoryTypeCount; i++) {
+		if ((typeFilter & (1 << i)) && (memoryProperties.memoryTypes[i].propertyFlags & properties) == properties) {
 			return i;
 		}
 	}
@@ -24,34 +25,25 @@ static uint32_t findMemoryType(const Device& device, uint32_t typeFilter, VkMemo
 }
 
 // Create a one shot command buffer
-static VkCommandBuffer BeginSingleUseCommandBuffer(const Device &device, const VkCommandPool &cmdPool)
+static vk::CommandBuffer BeginSingleUseCommandBuffer(const Device &device, const vk::CommandPool &cmdPool)
 {
-	VkCommandBufferAllocateInfo cmdBufferAllocInfo = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO };
-	cmdBufferAllocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	cmdBufferAllocInfo.commandPool = cmdPool;
-	cmdBufferAllocInfo.commandBufferCount = 1;
-
-	VkCommandBuffer cmdBuffer;
-	vkAllocateCommandBuffers(device.GetLogicalDevice(), &cmdBufferAllocInfo, &cmdBuffer);
-
-	VkCommandBufferBeginInfo cmdBufferBegin = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
-	cmdBufferBegin.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
-	vkBeginCommandBuffer(cmdBuffer, &cmdBufferBegin);
-	return cmdBuffer;
+	std::vector<vk::CommandBuffer> cmdBuffer = device().allocateCommandBuffers({ cmdPool, vk::CommandBufferLevel::ePrimary, 1 });
+	cmdBuffer.front().begin({ vk::CommandBufferUsageFlagBits::eOneTimeSubmit });
+	return cmdBuffer.front();
 }
 
-static void EndSingleUseCommandBuffer(const VkCommandBuffer cmdBuffer, const Device &device, const VkCommandPool &cmdPool)
+static void EndSingleUseCommandBuffer(const vk::CommandBuffer &cmdBuffer, const Device &device, const vk::CommandPool &cmdPool)
 {
-	vkEndCommandBuffer(cmdBuffer);
+	cmdBuffer.end();
 
-	VkSubmitInfo submitInfo = { VK_STRUCTURE_TYPE_SUBMIT_INFO };
-	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = &cmdBuffer;
+	std::array<vk::SubmitInfo, 1> submitInfo;
+	submitInfo[0] = {};
+	submitInfo[0].commandBufferCount = 1;
+	submitInfo[0].pCommandBuffers = &cmdBuffer;
 
-	vkQueueSubmit(device.GetQueue(E_QUEUE_TYPE::GRAPHICS).VulkanQueue, 1, &submitInfo, VK_NULL_HANDLE);
-	vkQueueWaitIdle(device.GetQueue(E_QUEUE_TYPE::GRAPHICS).VulkanQueue);
 
-	vkFreeCommandBuffers(device.GetLogicalDevice(), cmdPool, 1, &cmdBuffer);
+	device.GetQueue(E_QUEUE_TYPE::GRAPHICS).VulkanQueue.submit(submitInfo, VK_NULL_HANDLE);
+	device.GetQueue(E_QUEUE_TYPE::GRAPHICS).VulkanQueue.waitIdle();
+	device().freeCommandBuffers(cmdPool, { cmdBuffer });
 }
 

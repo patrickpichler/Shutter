@@ -3,17 +3,23 @@
 
 #include "Renderer/Image.h"
 #include "Renderer/Buffer.h"
-#include "Renderer/DeviceHandler.h";
+#include "Renderer/DeviceHandler.h"
 #include "stb_image.h"
 
 class Texture {
 public:
-	void Init(const Device &device, const std::string &filename, bool generateMips = false);
-	void Clean(const Device &device);
+	Texture(){}
+	explicit Texture(Device *device) : _Device(device){};
+	~Texture() {
+		Clean();
+	}
 
-	void TransferBufferToImage(const Device &device, const VkCommandPool &cmdPool);
+	void Load(const std::string &filename, bool generateMips = false);
+	void Clean();
 
-	const VkSampler &GetSampler() const {
+	virtual void TransferBufferToImage(const vk::CommandPool &cmdPool);
+
+	const vk::Sampler &GetSampler() const {
 		return _Sampler;
 	}
 	const Image &GetImage() const {
@@ -24,15 +30,16 @@ public:
 	}
 
 protected:
-	void CreateSampler(const Device &device);
+	void CreateSampler();
 
 protected:
+	Device *_Device;
 
 	Image _Image;
 
-	VkSampler _Sampler;
+	vk::Sampler _Sampler;
 
-	VkExtent3D _Dimensions;
+	vk::Extent3D _Dimensions;
 
 private:
 	std::string _Filename;

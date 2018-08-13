@@ -1,6 +1,6 @@
 #pragma once
 #include <vector>
-#include <vulkan/vulkan.h>
+#include <vulkan/vulkan.hpp>
 
 typedef const char* tLayerName;
 typedef std::vector<tLayerName> tLayerNameList;
@@ -15,19 +15,23 @@ public:
 	Layer() {}
 
 	void Init(const LayerRequestInfo& info);
-	void Clean(const VkInstance &instance);
+	void Clean(const vk::Instance &instance);
 
-	const tLayerNameList& GetEnabledLayers() const;
-	const tLayerNameList& GetDisabledLayers() const;
+	const tLayerNameList& GetEnabledLayers() const {
+		return _EnabledLayers;
+	}
+	const tLayerNameList& GetDisabledLayers() const {
+		return _DisabledLayers;
+	}
 
-	VkResult AttachDebugCallback(const VkInstance &instance);
+	void AttachDebugCallback(const vk::Instance &instance);
 
 private:
 	bool CheckLayer(const tLayerName& layerName);
 private:
-	std::vector<VkLayerProperties> AvailableLayers;
-	tLayerNameList EnabledLayers;
-	tLayerNameList DisabledLayers;
+	std::vector<vk::LayerProperties> _AvailableLayers;
+	tLayerNameList _EnabledLayers;
+	tLayerNameList _DisabledLayers;
 
-	VkDebugReportCallbackEXT Callback;
+	VkDebugReportCallbackEXT _Callback;
 };

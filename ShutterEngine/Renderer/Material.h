@@ -1,15 +1,17 @@
 #pragma once
 
 #include <string>
+#include <vector>
 #include <unordered_map>
 #include "Shader.h"
+#include "Engine/Scene.h"
 
 class Material {
 public:
-	Material(){}
-
-	Material(
-		const Device &device,
+	Material() {}
+	explicit Material(
+		Device *device,
+		Scene *scene,
 		const uint16_t width,
 		const uint16_t height,
 		const uint32_t poolSize
@@ -17,62 +19,65 @@ public:
 
 	void BindShader(const Shader &shader);
 
-	void CreatePipeline(const Device &device, const VkRenderPass &renderPass);
+	void CreatePipeline(const vk::RenderPass &renderPass);
 
-	const VkDescriptorPool &GetDescriptorPool() const {
+	const vk::DescriptorPool &GetDescriptorPool() const {
 		return _DescriptorPool;
 	}
-	const VkDescriptorSetLayout &GetDescriptorSetLayout() const {
+	const vk::DescriptorSetLayout &GetDescriptorSetLayout() const {
 		return _DesciptorSetLayout;
 	}
-	const VkPipeline &GetPipeline() const {
+	const vk::Pipeline &GetPipeline() const {
 		return _Pipeline;
 	}
-	const VkPipelineLayout &GetPipelineLayout() const {
-		return PipelineLayout;
+	const vk::PipelineLayout &GetPipelineLayout() const {
+		return _PipelineLayout;
 	}
 
 protected:
+	Device *_Device;
+	Scene *_Scene;
 
 	void PopulateInfo(const uint32_t width, const uint32_t height);
 
 	void CreateInputAssemblyInfo();
-	VkPipelineInputAssemblyStateCreateInfo inputAssemblyInfo;
+	vk::PipelineInputAssemblyStateCreateInfo _InputAssemblyInfo;
 
 	void CreateViewportInfo(const uint32_t width, const uint32_t height);
-	VkViewport viewport;
-	VkRect2D scissor;
-	VkPipelineViewportStateCreateInfo viewportState;
+	vk::Viewport _Viewport;
+	vk::Rect2D _Scissor;
+	vk::PipelineViewportStateCreateInfo _ViewportInfo;
 
 	virtual void CreateRasterizationInfo();
-	VkPipelineRasterizationStateCreateInfo rasterInfo;
+	vk::PipelineRasterizationStateCreateInfo _RasterizationInfo;
 
-	void CreateMultisamplingInfo();
-	VkPipelineMultisampleStateCreateInfo multisamplingInfo;
+	void CreateMultisampleInfo();
+	vk::PipelineMultisampleStateCreateInfo _MultisampleInfo;
 
 	void CreateDepthStencilInfo();
-	VkPipelineDepthStencilStateCreateInfo depthStencilInfo;
+	vk::PipelineDepthStencilStateCreateInfo _DepthStencilInfo;
 
 	void CreateColorBlendInfo();
-	VkPipelineColorBlendAttachmentState colorBlend;
-	VkPipelineColorBlendStateCreateInfo colorBlendInfo;
+	vk::PipelineColorBlendAttachmentState _ColorBlendAttachement;
+	vk::PipelineColorBlendStateCreateInfo _ColorBlendInfo;
 
-	virtual void CreateDescriptorSetLayout(const Device &device);
-	VkDescriptorSetLayout _DesciptorSetLayout;
+	virtual void CreateDescriptorSetLayout();
+	std::vector<vk::DescriptorSetLayoutBinding> _LayoutBindings;
+	vk::DescriptorSetLayout _DesciptorSetLayout;
 
+	virtual void CreatePushConstantRange();
+	std::vector<vk::PushConstantRange> _PushConstantRange;
 
-	virtual void CreateDescriptorPool(const Device &device, const uint32_t poolSize);
-	VkPipelineLayout PipelineLayout;
+	virtual void CreateDescriptorPool(const uint32_t poolSize);
+	vk::PipelineLayout _PipelineLayout;
 
-	std::vector<VkPipelineShaderStageCreateInfo> GetShaderInfoList();
+	// Return the bound shaders in a list
+	std::vector<vk::PipelineShaderStageCreateInfo> GetShaderInfoList();
+	std::unordered_map<vk::ShaderStageFlagBits, Shader> _ShaderMap;
 
-//private:
-	std::unordered_map<VkShaderStageFlagBits, Shader> ShaderMap;
+	vk::DescriptorPool _DescriptorPool;
 
-	VkDescriptorPool _DescriptorPool;
+	vk::Pipeline _Pipeline;
 
-	VkPipeline _Pipeline;
-
-	VkPipelineVertexInputStateCreateInfo vertexInputInfo;
-	VkPushConstantRange pushConstantRange[1];
+	vk::PipelineVertexInputStateCreateInfo _VertexInputInfo;
 };

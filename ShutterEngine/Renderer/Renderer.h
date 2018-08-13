@@ -3,7 +3,6 @@
 #include <memory>
 #define NOMINMAX
 #define VK_USE_PLATFORM_WIN32_KHR
-#define GLFW_INCLUDE_VULKAN
 #define GLFW_EXPOSE_NATIVE_WGL
 #define GLFW_EXPOSE_NATIVE_WIN32
 #include <GLFW/glfw3.h>
@@ -34,26 +33,27 @@
 
 #include "Engine/CubeTexture.h"
 
+#include "vulkan/vulkan.hpp"
+
 class Renderer {
 public:
 	Renderer(){
 	}
 
-	void Init(GLFWwindow* window, const uint16_t width, const uint16_t height, std::shared_ptr<Scene> scene);
+	void Init(GLFWwindow* window, const uint16_t width, const uint16_t height, Scene *scene);
 	void Draw();
 	void Clean();
 
-	const Device &GetDevice() const {
-		return DeviceRef;
-	}
+	void WaitIdle();
+
 private:
 	void CreateInstance();
 	void CreateDevice();
-	void CreateSurface(GLFWwindow* window);
+	void CreateSurface();
 	void PrepareDynamic();
-	void CreateSwapChain();
+	void CreateSwapchain();
 	void CreateRenderPass();
-	void CreateFrameBuffers();
+	void CreateFramebuffers();
 	void CreateCommandPool();
 	void CreateDepth();
 	void CreateResolve();
@@ -63,58 +63,51 @@ private:
 
 	void LoadObj(const std::string &path);
 private:
+	// Screen/window related
+	GLFWwindow *_Window;
+	vk::Extent2D _ScreenSize;
 
-	Extension extensionManager;
-	Layer layerManager;
-	Device DeviceRef;
+	// Rendering related
+	Extension _ExtensionManager;
+	Layer _LayerManager;
 
-	VkExtent2D ScreenSize;
+	Device _Device;
+	vk::Instance _Instance;
 
-	VkInstance Instance;
+	vk::SurfaceKHR _Surface;
 
-	VkSurfaceKHR Surface;
+	vk::SwapchainKHR _Swapchain;
+	std::vector<Image> _SwapchainImageViews;
+	std::vector<Image> _ImageResolve;
+	Image _DepthImage;
 
-	VkSwapchainKHR SwapChain;
-	std::vector<Image> SwapChainImageViews;
-	std::vector<Image> ImageResolve;
+	std::vector<vk::Framebuffer> _Framebuffers;
 
-	Shader VertexShader;
-	Shader FragmentShader;
+	vk::RenderPass _RenderPass;
 
-	VkRenderPass RenderPass;
+	vk::CommandPool _CommandPool;
+	std::vector<vk::CommandBuffer> _CommandBuffers;
 
-	std::vector<VkFramebuffer> FrameBuffers;
+	size_t _CurrentFrame = 0;
 
-	VkCommandPool CommandPool;
-	std::vector<VkCommandBuffer> CommandBuffers;
+	// Sync related
+	std::vector<vk::Semaphore> _ImageAvailableSemaphore;
+	std::vector<vk::Semaphore> _RenderFinishedSemaphore;
+	std::vector<vk::Fence> _InFlightFences;
 
-	std::vector<VkSemaphore> ImageAvailableSemaphore;
-	std::vector<VkSemaphore> RenderFinishedSemaphore;
-	std::vector<VkFence> InFlightFences;
+	// Scene/Objects related
+	Scene *_Scene;
 
-	size_t currentFrame = 0;
-	Image DepthImage;
-
-	Object _Apple;
-
-	Mesh _AppleMesh;
-	Mesh _SponzaMesh;
 	Mesh _Cube;
-	Texture _AppleTexture;
-	Texture _AppleSpecular;
-	Texture _AppleNormal;
-	CubeTexture cbt;
-
-	Object _Skybox;
-
-	std::shared_ptr<Material> _BasicMaterial;
-	std::shared_ptr<Cubemap> _SkyboxMaterial;
-
 	std::vector<Mesh> _SceneMeshes;
-	std::vector<Object> _SceneObjects;
+
+	CubeTexture _SkyboxTexture;
 	std::vector<Texture> _SceneTextures;
 
-	std::shared_ptr<Scene> _Scene;
+	Object _Skybox;
+	Object _Apple;
+	std::vector<Object> _SceneObjects;
 
-	std::vector<VkDescriptorSet> _FrameDescriptorSets;
+	Material _BasicMaterial;
+	Cubemap _SkyboxMaterial;
 };
