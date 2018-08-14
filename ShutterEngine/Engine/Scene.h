@@ -38,13 +38,15 @@ public:
 	}
 
 private:
-	void CreateDescriptorSetLayout();
+	void CreateDescriptorSetLayout(const uint32_t nbImages);
 
 public:
-	std::shared_ptr<Camera> _Camera;
+	Camera *_Camera;
 
 private:
 	Device *_Device;
+
+	vk::DescriptorPool _DescriptorPool;
 
 	std::vector<vk::DescriptorSet> _SceneDescriptorSets;
 

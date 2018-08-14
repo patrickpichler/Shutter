@@ -1,9 +1,12 @@
 #pragma once
 #include <vector>
+#include <set>
 #include <map>
 #include <optional>
+
 #include <vulkan/vulkan.hpp>
-#include <set>
+
+typedef std::optional<std::reference_wrapper<vk::SurfaceKHR>> optional_surface;
 
 struct DeviceRequestInfo {
 	std::vector<const char*> RequiredExtensions;
@@ -19,44 +22,60 @@ enum E_QUEUE_TYPE
 
 struct Queue {
 	uint32_t Index;
-	VkQueue VulkanQueue;
+	vk::Queue VulkanQueue;
 };
 
 class Device {
 public:
-	Device() : VulkanDevice(VK_NULL_HANDLE){}
-	Device(const VkPhysicalDevice &physicalDevice);
+	Device() {}
+	explicit Device(const vk::PhysicalDevice &physicalDevice);
 
-	void Init(const DeviceRequestInfo& info, std::optional<std::reference_wrapper<VkSurfaceKHR>> surface);
+	// Return a device with the first suitable Vulkan physical device
+	static Device GetDevice(const vk::Instance &instance, const DeviceRequestInfo& info, optional_surface surface);
+
+	void Init(const DeviceRequestInfo& info, optional_surface surface);
 	void Clean();
 
-	const VkDevice& GetLogicalDevice() const;
-	vk::Device& GetLogicalDeviceNew() const;
-	const VkPhysicalDevice& GetPhysicalDevice() const;
-	const Queue& GetQueue(const E_QUEUE_TYPE queueType) const;
+
 	std::set<uint32_t> GetQueueIndexSet();
 
-	const bool IsSuitable(const DeviceRequestInfo& info, std::optional<std::reference_wrapper<VkSurfaceKHR>> surface) const;
+	const bool IsSuitable(const DeviceRequestInfo& info, optional_surface surface) const;
 
-	const VkPhysicalDeviceProperties &GetProperties() const {
-		return DeviceProperties;
+
+	const vk::Device& GetDevice() const {
+		return _Device;
+	}
+
+	const vk::Device& operator()() const {
+		return _Device;
+	}
+
+	const vk::PhysicalDevice& GetPhysicalDevice() const {
+		return _PhysicalDevice;
+	}
+
+	const Queue& GetQueue(const E_QUEUE_TYPE queueType) const {
+		return _Queues.at(queueType);
+	}
+
+	const vk::PhysicalDeviceProperties &GetProperties() const {
+		return _PhysicalDeviceProperties;
 	}
 
 private:
-	void PickQueueFamilyIndex(const DeviceRequestInfo& info, std::optional<std::reference_wrapper<VkSurfaceKHR>> surface);
+	void PickQueueFamilyIndex(const DeviceRequestInfo& info, optional_surface surface);
 
 private:
-	VkPhysicalDevice VulkanDevice;
-	VkDevice LogicalDevice;
+	// Physical device (graphics card)
+	vk::PhysicalDevice _PhysicalDevice;
+	vk::PhysicalDeviceProperties _PhysicalDeviceProperties;
+	vk::PhysicalDeviceFeatures _PhysicalDeviceFeatures;
 
-	VkPhysicalDeviceProperties DeviceProperties;
-	VkPhysicalDeviceFeatures DeviceFeatures;
-	std::vector<VkExtensionProperties> DeviceExtensions;
-	std::vector<VkQueueFamilyProperties> QueueFamilies;
+	// Logical device (vulkan handle)
+	vk::Device _Device;
+	std::vector<vk::ExtensionProperties> _DeviceExtensions;
 
-	std::map<E_QUEUE_TYPE, Queue> QueueList;
+	// Queues currently on the device
+	std::vector<vk::QueueFamilyProperties> _QueueFamilyProperties;
+	std::map<E_QUEUE_TYPE, Queue> _Queues;
 };
-
-namespace DeviceHandler {
-	Device GetDevice(const VkInstance &instance, const DeviceRequestInfo& info, std::optional<std::reference_wrapper<VkSurfaceKHR>> surface);
-}

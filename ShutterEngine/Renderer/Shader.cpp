@@ -2,37 +2,29 @@
 #include <fstream>
 
 Shader::Shader(
+	Device *device,
 	const std::string &shaderName,
 	const std::string &filename,
-	const VkShaderStageFlagBits stage,
-	const VkDevice &device,
+	const vk::ShaderStageFlagBits stage,
 	const std::string &entrypoint
-){
-	ShaderName = shaderName;
-	EntryPoint = entrypoint;
-	ShaderStage = stage;
+):
+	_Device(device),
+	_Stage(stage),
+	_Name(shaderName),
+	_EntryPoint(entrypoint)
+{
 	LoadFile(filename);
-	CreateShaderModule(device);
+	CreateShaderModule();
 }
 
-const VkShaderModule& Shader::GetShaderModule() const
+void Shader::Clean()
 {
-	return ShaderModule;
+	//_Device->GetDevice().destroyShaderModule(_Module);
 }
 
-void Shader::Clean(const Device &device)
+vk::PipelineShaderStageCreateInfo Shader::GetShaderPipelineInfo() const
 {
-	vkDestroyShaderModule(device.GetLogicalDevice(), ShaderModule, nullptr);
-}
-
-VkPipelineShaderStageCreateInfo Shader::GetShaderPipelineInfo() const
-{
-	VkPipelineShaderStageCreateInfo shaderInfo = { VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO };
-	shaderInfo.stage = ShaderStage;
-	shaderInfo.module = GetShaderModule();
-	shaderInfo.pName = EntryPoint.c_str();
-
-	return shaderInfo;
+	return vk::PipelineShaderStageCreateInfo({}, _Stage, _Module, _EntryPoint.c_str());
 }
 
 void Shader::LoadFile(const std::string &filename)
@@ -44,19 +36,13 @@ void Shader::LoadFile(const std::string &filename)
 	}
 
 	size_t fileSize = (size_t)file.tellg();
-	ShaderCode.resize(fileSize);
+	_Code.resize(fileSize);
 	file.seekg(0);
-	file.read(ShaderCode.data(), fileSize);
+	file.read(_Code.data(), fileSize);
 	file.close();
 }
 
-void Shader::CreateShaderModule(const VkDevice &device)
+void Shader::CreateShaderModule()
 {
-	VkShaderModuleCreateInfo shaderModuleInfo = { VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO };
-	shaderModuleInfo.codeSize = ShaderCode.size();
-	shaderModuleInfo.pCode = reinterpret_cast<const uint32_t*>(ShaderCode.data());
-
-	if (vkCreateShaderModule(device, &shaderModuleInfo, nullptr, &ShaderModule) != VK_SUCCESS) {
-		throw std::runtime_error("Failure to create shader module for " + ShaderName + ".");
-	}
+	_Module = _Device->GetDevice().createShaderModule(vk::ShaderModuleCreateInfo({}, _Code.size(), reinterpret_cast<const uint32_t*>(_Code.data())));
 }

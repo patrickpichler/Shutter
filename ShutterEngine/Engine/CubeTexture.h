@@ -5,25 +5,17 @@
 
 #include "Renderer/Image.h"
 #include "Renderer/Buffer.h"
-#include "Renderer/DeviceHandler.h";
+#include "Renderer/DeviceHandler.h"
 #include "stb_image.h"
 
 class CubeTexture: public Texture {
 public:
-	void Init(const Device &device, const std::array<std::string, 6> &filename, bool generateMips = false);
-	void Clean(const Device &device);
+	CubeTexture() {}
+	explicit CubeTexture(Device *device) : Texture(device) {};
 
-	void TransferBufferToImage(const Device &device, const VkCommandPool &cmdPool);
+	void Load(const std::array<std::string, 6> &filename, bool generateMips = false);
 
-	const VkSampler &GetSampler() const {
-		return _Sampler;
-	}
-	const Image &GetImage() const {
-		return _Image;
-	}
-	//const std::string &GetFilename() {
-	//	return _Filename;
-	//}
+	void TransferBufferToImage(const vk::CommandPool &cmdPool) override;
 
 private:
 	std::array<std::string, 6> _Filenames;

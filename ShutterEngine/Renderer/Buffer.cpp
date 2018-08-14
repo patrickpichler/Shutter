@@ -2,63 +2,51 @@
 
 #include "Buffer.h"
 #include "Helpers.h"
+#include <iostream>
+
 
 Buffer::Buffer(
-	const Device &device,
-	const VkBufferUsageFlags usage,
+	Device *device,
+	const vk::BufferUsageFlagBits usage,
 	const size_t size,
-	const VkSharingMode sharingMode
-) {
-	VkBufferCreateInfo bufferInfo = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
-	bufferInfo.size = size;
-	bufferInfo.usage = usage;
-	bufferInfo.sharingMode = sharingMode;
+	const vk::SharingMode sharingMode
+):
+	_Device(device)
+{
+	std::cerr << "Allocating: " << size << std::endl;
 
-	vk_expect_success(vkCreateBuffer(device.GetLogicalDevice(), &bufferInfo, nullptr, &_Buffer), "Failed to create buffer.");
+	_Buffer = _Device->GetDevice().createBuffer(vk::BufferCreateInfo( {}, size, usage, sharingMode ));
 
-	VkMemoryRequirements memRequirements;
-	vkGetBufferMemoryRequirements(device.GetLogicalDevice(), _Buffer, &memRequirements);
-	
-	VkMemoryAllocateInfo allocInfo = { VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
-	allocInfo.allocationSize = memRequirements.size;
-	allocInfo.memoryTypeIndex = findMemoryType(device, memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+	vk::MemoryRequirements memoryRequirements = _Device->GetDevice().getBufferMemoryRequirements(_Buffer);
 
-	vk_expect_success(vkAllocateMemory(device.GetLogicalDevice(), &allocInfo, nullptr, &_Memory), "Failed to allocate buffer memory.");
+	vk::MemoryAllocateInfo memoryInfo;
+	memoryInfo.allocationSize = memoryRequirements.size;
+	memoryInfo.memoryTypeIndex = findMemoryType(*_Device, memoryRequirements.memoryTypeBits, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 
-	vk_expect_success(vkBindBufferMemory(device.GetLogicalDevice(), _Buffer, _Memory, 0), "Failed to bind the buffer and the memory.");
+	_Memory = _Device->GetDevice().allocateMemory(memoryInfo);
+	_Device->GetDevice().bindBufferMemory(_Buffer, _Memory, 0);
 }
 
-void Buffer::Copy(const Device &device, void * data, const size_t size)
+void Buffer::Copy(void * data, const size_t size)
 {
 	void *deviceData;
-	vk_expect_success(vkMapMemory(device.GetLogicalDevice(), _Memory, 0, size, 0, &deviceData), "Failed to moun tthe memory for the buffer.");
+	deviceData = _Device->GetDevice().mapMemory(_Memory, 0, size, {});
 	std::memcpy(deviceData, data, size);
 
-	// Tell the driver we updated some resources
-	VkMappedMemoryRange memoryRanges[] = {
-		{
-			VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
-			nullptr,
-			_Memory,
-			0,
-			VK_WHOLE_SIZE		/// TODO: Inspect impact of having VK_WHOLE_SIZE here
-		}
-	};
-	
-	vk_expect_success(vkFlushMappedMemoryRanges(device.GetLogicalDevice(), 1, memoryRanges), "Unable to flush mapped memory.");
+	std::array<vk::MappedMemoryRange, 1> memoryRanges;
+	memoryRanges[0] = vk::MappedMemoryRange(_Memory, 0, VK_WHOLE_SIZE);
+	_Device->GetDevice().flushMappedMemoryRanges(memoryRanges);
 
-	vkUnmapMemory(device.GetLogicalDevice(), _Memory);
+	_Device->GetDevice().unmapMemory(_Memory);
 }
 
-void Buffer::Clean(const Device & device)
+void Buffer::Clean()
 {
-	if (_Memory != VK_NULL_HANDLE) {
-		vkFreeMemory(device.GetLogicalDevice(), _Memory, nullptr);
-		_Memory = VK_NULL_HANDLE;
+	if (_Memory) {
+		_Device->GetDevice().freeMemory(_Memory);
 	}
 
-	if (_Buffer != VK_NULL_HANDLE) {
-		vkDestroyBuffer(device.GetLogicalDevice(), _Buffer, nullptr);
-		_Buffer = VK_NULL_HANDLE;
+	if (_Buffer) {
+		_Device->GetDevice().destroyBuffer(_Buffer);
 	}
 }

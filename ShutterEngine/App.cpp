@@ -26,9 +26,9 @@ void Application::Init()
 	);
 
 	_Scene = Scene();
-	_Scene._Camera = std::make_shared<Camera>(_Camera);
+	_Scene._Camera = &_Camera;
 
-	render.Init(Window, _Width, _Height, std::make_shared<Scene>(_Scene));
+	render.Init(Window, _Width, _Height, &_Scene);
 }
 
 void Application::Run()
@@ -58,7 +58,7 @@ void Application::Run()
 		//render.UpdateCamera(movement, forward, up);
 		DrawFrame();
 	}
-	vkDeviceWaitIdle(render.GetDevice().GetLogicalDevice());
+	render.WaitIdle();
 }
 
 void Application::Clean()

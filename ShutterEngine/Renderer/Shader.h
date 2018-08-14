@@ -3,40 +3,44 @@
 #include <vector>
 #include "DeviceHandler.h"
 
-#include <vulkan/vulkan.h>
+#include <vulkan/vulkan.hpp>
 
 class Shader {
 public:
-	Shader() {};
-
-	Shader(
+	Shader(){}
+	explicit Shader(
+		Device *device,
 		const std::string &shaderName,
 		const std::string &filename,
-		const VkShaderStageFlagBits stage,
-		const VkDevice &device,
+		const vk::ShaderStageFlagBits stage,
 		const std::string &entrypoint = "main"
 	);
-
-	const VkShaderModule& GetShaderModule() const;
-
-	void Clean(const Device &device);
-
-	VkPipelineShaderStageCreateInfo GetShaderPipelineInfo() const;
-	
-	VkShaderStageFlagBits GetStage() const {
-		return ShaderStage;
+	~Shader() {
+		Clean();
 	}
+
+	void Clean();
+
+	const vk::ShaderModule& GetShaderModule() const {
+		return _Module;
+	}
+
+	vk::PipelineShaderStageCreateInfo GetShaderPipelineInfo() const;
 
 
 private:
 	void LoadFile(const std::string &filename);
-	void CreateShaderModule(const VkDevice &device);
+	void CreateShaderModule();
+
+public:
+	vk::ShaderStageFlagBits _Stage;
 
 private:
-	std::string ShaderName;
-	std::vector<char> ShaderCode;
-	std::string EntryPoint;
-	VkShaderStageFlagBits ShaderStage;
+	Device *_Device;
 
-	VkShaderModule ShaderModule;
+	std::string _Name;
+	std::vector<char> _Code;
+	std::string _EntryPoint;
+
+	vk::ShaderModule _Module;
 };

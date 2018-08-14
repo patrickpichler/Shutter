@@ -5,59 +5,63 @@
 
 class Image {
 public:
-	// Create an image and its image view
-	void Init(
-		const Device &device,
+	Image(){}
+	explicit Image(
+		Device *device,
 		const VkExtent3D &dimensions,
 		const uint8_t layers,
-		const VkFormat &format,
-		const VkImageUsageFlags &usage,
+		const vk::Format &format,
+		const vk::ImageUsageFlags usage,
 		const bool generateMips = false,
-		const VkSampleCountFlagBits numSamples = VK_SAMPLE_COUNT_1_BIT
+		const vk::SampleCountFlagBits numSamples = vk::SampleCountFlagBits::e1
 	);
 
 	// Only create the image view, based on the provided image
-	void Init(
-		const Device &device,
-		const VkImage &image,
-		const VkFormat &format
+	void FromVkImage(
+		Device *device,
+		const vk::Image &image,
+		const vk::Format &format
 	);
-	void Clean(const Device &device);
+	void Clean();
 
-	void Copy(const VkBuffer &buffer, const uint32_t width, const uint32_t height);
-	void GenerateMipmaps(const Device &device, const VkCommandPool &cmdPool);
-	void TransitionLayout(const Device &device, const VkCommandPool &cmdPool, const VkImageLayout oldLayout, const VkImageLayout newLayout);
+	void GenerateMipmaps(const vk::CommandPool &cmdPool);
+	void TransitionLayout(const vk::CommandPool &cmdPool, const vk::ImageLayout oldLayout, const vk::ImageLayout newLayout);
 
 
-	const VkImage &GetImage() const {
-		return ImageHolder;
+	const vk::Image &GetImage() const {
+		return _Image;
 	}
 
-	const VkImageView &GetImageView() const {
-		return ImageView;
+	const vk::ImageView &GetImageView() const {
+		return _View;
 	}
 
-	const VkFormat &GetFormat() const {
-		return Format;
+	const vk::Format &GetFormat() const {
+		return _Format;
 	}
 
-	uint8_t MipLevels;
+	const uint32_t GetMipLevel() const {
+		return _MipLevels;
+	}
 
 private:
-	void CreateImage(const Device &device);
-	void AllocateMemory(const Device &device);
-	void CreateImageView(const Device &device);
+	void CreateImage();
+	void AllocateMemory();
+	void CreateImageView();
 
 private:
-	VkFormat Format;
-	VkImageUsageFlags Usage;
-	VkExtent3D Dimensions;
-	uint8_t Layers;
+	Device *_Device;
 
-	VkSampleCountFlagBits NumSamples;
+	vk::Format _Format;
+	vk::ImageUsageFlags _Usage;
+	vk::SampleCountFlagBits _NumSamples;
 
-	VkImage ImageHolder;
-	VkDeviceMemory DeviceMemory;
+	vk::Extent3D _Dimensions;
+	uint32_t _MipLevels;
+	uint32_t _NbLayers;
 
-	VkImageView ImageView;
+	vk::Image _Image;
+	vk::ImageView _View;
+
+	vk::DeviceMemory _Memory;
 };

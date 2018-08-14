@@ -38,7 +38,7 @@ void Camera::Update(const double mouseX, const double mouseY, const Direction &d
 
 	_Front = glm::normalize(direction);
 
-	glm::vec3 movement;
+	glm::vec3 movement = { 0.0f, 0.0f, 0.0f };
 
 	if (dir.Up) {
 		movement = _Front * _TranslationSpeed;
@@ -58,7 +58,9 @@ void Camera::Update(const double mouseX, const double mouseY, const Direction &d
 
 glm::mat4 Camera::GetProjection() const
 {
-	return glm::perspective(glm::radians(_FOV), float(_Width) / float(_Height), 0.1f, 100.0f);
+	glm::mat4 proj = glm::perspective(glm::radians(_FOV), float(_Width) / float(_Height), 0.1f, 100.0f);
+	proj[1][1] *= -1;
+	return proj;
 }
 
 glm::mat4 Camera::GetView() const

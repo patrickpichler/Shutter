@@ -2,7 +2,7 @@
 #include "Renderer/Helpers.h"
 #include <algorithm>
 
-void Texture::Init(const Device &device, const std::string &filename, bool generateMips)
+void Texture::Load(const std::string &filename, bool generateMips)
 {
 	_Filename = filename;
 
@@ -10,83 +10,91 @@ void Texture::Init(const Device &device, const std::string &filename, bool gener
 	int height;
 	int channels;
 
+	// Load the image from disk
 	stbi_uc* image = stbi_load(filename.c_str(), &width, &height, &channels, STBI_rgb_alpha);
 
-	_Dimensions = VkExtent3D{ static_cast<uint32_t>(width), static_cast<uint32_t>(height), 1 };
+	_Dimensions = vk::Extent3D{ static_cast<uint32_t>(width), static_cast<uint32_t>(height), 1 };
 
-	_Buffer = Buffer(device, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, width * height * 4);
-	_Buffer.Copy(device, image, width * height * 4);
+	// Copy the data to the buffer
+	_Buffer = Buffer(_Device, vk::BufferUsageFlagBits::eTransferSrc, width * height * 4);
+	_Buffer.Copy(image, width * height * 4);
 
 	stbi_image_free(image);
 
-	_Image.Init(
-		device,
+	_Image = Image(
+		_Device,
 		_Dimensions,
 		1,
-		VK_FORMAT_R8G8B8A8_UNORM,
-		VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+		vk::Format::eR8G8B8A8Unorm,
+		vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled,
 		generateMips
 	);
 
-	CreateSampler(device);
+	CreateSampler();
 }
 
-void Texture::Clean(const Device &device)
+void Texture::Clean()
 {
-	_Buffer.Clean(device);
-	vkDestroySampler(device.GetLogicalDevice(), _Sampler, nullptr);
-	_Sampler = VK_NULL_HANDLE;
-	_Image.Clean(device);
+	//_Buffer.Clean();
+	//_Device->GetDevice().destroySampler(_Sampler);
+	//_Image.Clean();
 }
 
-void Texture::TransferBufferToImage(const Device &device, const VkCommandPool &cmdPool)
+void Texture::TransferBufferToImage(const vk::CommandPool &cmdPool)
 {
+	std::array<vk::BufferImageCopy, 1> regions = {};
+	regions[0].bufferOffset = 0;
+	regions[0].bufferRowLength = 0;
+	regions[0].bufferImageHeight = 0;
+	regions[0].imageSubresource.aspectMask = vk::ImageAspectFlagBits::eColor;
+	regions[0].imageSubresource.mipLevel = 0;
+	regions[0].imageSubresource.baseArrayLayer = 0;
+	regions[0].imageSubresource.layerCount = 1;
+	regions[0].imageOffset = { 0,0,0 };
+	regions[0].imageExtent = _Dimensions;
 
-	VkBufferImageCopy region = {};
-	region.bufferOffset = 0;
-	region.bufferRowLength = 0;
-	region.bufferImageHeight = 0;
-	region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	region.imageSubresource.mipLevel = 0;
-	region.imageSubresource.baseArrayLayer = 0;
-	region.imageSubresource.layerCount = 1;
-	region.imageOffset = { 0,0,0 };
-	region.imageExtent = _Dimensions;
+	_Image.TransitionLayout(cmdPool, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
 
-	_Image.TransitionLayout(device, cmdPool, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+	vk::CommandBuffer cmdBuffer = BeginSingleUseCommandBuffer(*_Device, cmdPool);
 
-	VkCommandBuffer cmdBuffer = BeginSingleUseCommandBuffer(device, cmdPool);
-	vkCmdCopyBufferToImage(cmdBuffer, _Buffer.GetBuffer(), _Image.GetImage(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
-	EndSingleUseCommandBuffer(cmdBuffer, device, cmdPool);
+	cmdBuffer.copyBufferToImage(
+		_Buffer.GetBuffer(),
+		_Image.GetImage(),
+		vk::ImageLayout::eTransferDstOptimal,
+		regions
+	);
 
-	if (_Image.MipLevels > 1) {
-		_Image.GenerateMipmaps(device, cmdPool);
+	EndSingleUseCommandBuffer(cmdBuffer, *_Device, cmdPool);
+
+	if (_Image.GetMipLevel() > 1u) {
+		_Image.GenerateMipmaps(cmdPool);
 	}
 	else
 	{
-		_Image.TransitionLayout(device, cmdPool, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+		_Image.TransitionLayout(cmdPool, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal);
 	}
+
+	_Buffer.Clean();
 }
 
-void Texture::CreateSampler(const Device &device)
+void Texture::CreateSampler()
 {
-	VkSamplerCreateInfo samplerInfo = { VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO };
-	samplerInfo.magFilter = VK_FILTER_LINEAR;
-	samplerInfo.minFilter = VK_FILTER_LINEAR;
-	samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-	samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-	samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-	samplerInfo.anisotropyEnable = VK_FALSE;
+	vk::SamplerCreateInfo samplerInfo = {};
+	samplerInfo.magFilter = vk::Filter::eLinear;
+	samplerInfo.minFilter = vk::Filter::eLinear;
+	samplerInfo.addressModeU = vk::SamplerAddressMode::eRepeat;
+	samplerInfo.addressModeV = vk::SamplerAddressMode::eRepeat;
+	samplerInfo.addressModeW = vk::SamplerAddressMode::eRepeat;
+	samplerInfo.anisotropyEnable = false;
 	samplerInfo.maxAnisotropy = 16;
-	samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
-	samplerInfo.unnormalizedCoordinates = VK_FALSE;
-	samplerInfo.compareEnable = VK_FALSE;
-	samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
-	samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+	samplerInfo.borderColor = vk::BorderColor::eFloatOpaqueBlack;
+	samplerInfo.unnormalizedCoordinates = false;
+	samplerInfo.compareEnable = false;
+	samplerInfo.compareOp = vk::CompareOp::eAlways;
+	samplerInfo.mipmapMode = vk::SamplerMipmapMode::eLinear;
 	samplerInfo.mipLodBias = 0.0f;
 	samplerInfo.minLod = 0.0f;
-	samplerInfo.maxLod = _Image.MipLevels;
+	samplerInfo.maxLod = _Image.GetMipLevel();
 
-
-	vkCreateSampler(device.GetLogicalDevice(), &samplerInfo, nullptr, &_Sampler);
+	_Sampler = _Device->GetDevice().createSampler(samplerInfo);
 }

@@ -1,5 +1,4 @@
 #include "Layers.h"
-#include <vulkan/vulkan.h>
 #include <algorithm>
 #include <iostream>
 
@@ -21,10 +20,7 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
 
 void Layer::Init(const LayerRequestInfo& info)
 {
-	uint32_t LayerCount = 0;
-	vkEnumerateInstanceLayerProperties(&LayerCount, nullptr);
-	AvailableLayers.resize(LayerCount);
-	vkEnumerateInstanceLayerProperties(&LayerCount, AvailableLayers.data());
+	_AvailableLayers = vk::enumerateInstanceLayerProperties();
 
 	// Check the required, missing one will throw an exception
 	for (const auto& layerName : info.RequiredLayers) {
@@ -32,55 +28,40 @@ void Layer::Init(const LayerRequestInfo& info)
 			throw std::runtime_error("Required layer " + std::string(layerName) + " is unavailable.");
 		}
 
-		EnabledLayers.push_back(layerName);
+		_EnabledLayers.push_back(layerName);
 	}
 
 	// Check the optional, missing one will add it to the disabled
 	for (const auto& layerName : info.OptionalLayers) {
 		if (!CheckLayer(layerName)) {
-			DisabledLayers.push_back(layerName);
+			_DisabledLayers.push_back(layerName);
 		}
 
-		EnabledLayers.push_back(layerName);
+		_EnabledLayers.push_back(layerName);
 	}
 }
 
-void Layer::Clean(const VkInstance & instance)
+void Layer::Clean(const vk::Instance &instance)
 {
-	auto func = (PFN_vkDestroyDebugReportCallbackEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugReportCallbackEXT");
-	if (func != nullptr) {
-		func(instance, Callback, nullptr);
-	}
+	//instance.destroyDebugReportCallbackEXT(_Callback);
 }
 
-const tLayerNameList& Layer::GetEnabledLayers() const
+void Layer::AttachDebugCallback(const vk::Instance &instance)
 {
-	return EnabledLayers;
-}
-
-const tLayerNameList& Layer::GetDisabledLayers() const
-{
-	return DisabledLayers;
-}
-
-VkResult Layer::AttachDebugCallback(const VkInstance &instance)
-{
-	VkDebugReportCallbackCreateInfoEXT debugCallbackInfo = { VK_STRUCTURE_TYPE_DEBUG_REPORT_CALLBACK_CREATE_INFO_EXT };
-	debugCallbackInfo.flags = VK_DEBUG_REPORT_WARNING_BIT_EXT | VK_DEBUG_REPORT_ERROR_BIT_EXT;
-	debugCallbackInfo.pfnCallback = debugCallback;
-
-	auto func = (PFN_vkCreateDebugReportCallbackEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugReportCallbackEXT");
-	return func(instance, &debugCallbackInfo, nullptr, &Callback);
+	//instance.createDebugReportCallbackEXT(vk::DebugReportCallbackCreateInfoEXT(
+	//	vk::DebugReportFlagBitsEXT::eWarning | vk::DebugReportFlagBitsEXT::eError,
+	//	(PFN_vkDebugReportCallbackEXT)_Callback
+	//));
 }
 
 bool Layer::CheckLayer(const tLayerName & layerName)
 {
 	auto it = std::find_if(
-		AvailableLayers.begin(),
-		AvailableLayers.end(),
-		[&layerName](const VkLayerProperties&  availableExtenion) {
+		_AvailableLayers.begin(),
+		_AvailableLayers.end(),
+		[&layerName](const vk::LayerProperties&  availableExtenion) {
 			return std::strcmp(availableExtenion.layerName, layerName) == 0;
 		}
 	);
-	return it != AvailableLayers.end();
+	return it != _AvailableLayers.end();
 }
