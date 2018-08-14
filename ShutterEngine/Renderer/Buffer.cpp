@@ -42,13 +42,11 @@ void Buffer::Copy(void * data, const size_t size)
 
 void Buffer::Clean()
 {
-	//if (_Memory) {
-	//	_Device->GetDevice().freeMemory(_Memory);
-	//}
+	if (_Memory) {
+		_Device->GetDevice().freeMemory(_Memory);
+	}
 
-	//if (_Buffer) {
-	//	_Device->GetDevice().destroyBuffer(_Buffer);
-	//}
-
-	//_Device = nullptr;
+	if (_Buffer) {
+		_Device->GetDevice().destroyBuffer(_Buffer);
+	}
 }

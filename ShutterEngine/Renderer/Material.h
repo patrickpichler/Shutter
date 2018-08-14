@@ -69,13 +69,12 @@ protected:
 	std::vector<vk::PushConstantRange> _PushConstantRange;
 
 	virtual void CreateDescriptorPool(const uint32_t poolSize);
+	vk::DescriptorPool _DescriptorPool;
 	vk::PipelineLayout _PipelineLayout;
 
 	// Return the bound shaders in a list
 	std::vector<vk::PipelineShaderStageCreateInfo> GetShaderInfoList();
 	std::unordered_map<vk::ShaderStageFlagBits, Shader> _ShaderMap;
-
-	vk::DescriptorPool _DescriptorPool;
 
 	vk::Pipeline _Pipeline;
 

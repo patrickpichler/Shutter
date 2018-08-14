@@ -60,5 +60,6 @@ void CubeTexture::TransferBufferToImage(const vk::CommandPool &cmdPool)
 		EndSingleUseCommandBuffer(cmdBuffer, *_Device, cmdPool);
 
 		_Image.TransitionLayout(cmdPool, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal);
+		_Buffers.at(i).Clean();
 	}
 }

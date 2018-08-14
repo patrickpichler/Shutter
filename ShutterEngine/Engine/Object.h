@@ -15,7 +15,7 @@ public:
 
 	void AddTexture(const uint32_t binding, const Texture &texture);
 
-	void CreateDescriptorSet(const Device &device);
+	void CreateDescriptorSet();
 
 	Material *GetMaterial() {
 		return _Material;

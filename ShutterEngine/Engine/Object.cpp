@@ -15,7 +15,7 @@ void Object::AddTexture(const uint32_t binding, const Texture &texture)
 	_Textures.emplace(binding, texture);
 }
 
-void Object::CreateDescriptorSet(const Device &device)
+void Object::CreateDescriptorSet()
 {
 	std::vector<vk::DescriptorSetLayout> layouts(_NbImages, _Material->GetDescriptorSetLayout());
 
@@ -57,7 +57,9 @@ void Object::CreateDescriptorSet(const Device &device)
 					texture.second.GetSampler(),
 					texture.second.GetImage().GetImageView(),
 					vk::ImageLayout::eShaderReadOnlyOptimal
-				)
+				),
+				nullptr,
+				nullptr
 			));
 			j++;
 		}

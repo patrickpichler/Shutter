@@ -73,6 +73,8 @@ void Texture::TransferBufferToImage(const vk::CommandPool &cmdPool)
 	{
 		_Image.TransitionLayout(cmdPool, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal);
 	}
+
+	_Buffer.Clean();
 }
 
 void Texture::CreateSampler()

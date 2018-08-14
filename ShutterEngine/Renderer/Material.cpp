@@ -175,13 +175,6 @@ void Material::CreateDescriptorSetLayout()
 		vk::ShaderStageFlagBits::eFragment
 	));
 
-	_LayoutBindings.push_back(vk::DescriptorSetLayoutBinding(
-		3,
-		vk::DescriptorType::eCombinedImageSampler,
-		1,
-		vk::ShaderStageFlagBits::eFragment
-	));
-
 	_DesciptorSetLayout = _Device->GetDevice().createDescriptorSetLayout(vk::DescriptorSetLayoutCreateInfo({}, _LayoutBindings.size(), _LayoutBindings.data()));
 }
 

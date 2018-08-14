@@ -31,7 +31,7 @@ public:
 	//}
 
 	~Buffer() {
-		Clean();
+		//Clean();
 	}
 
 	void Copy(void *data, const size_t size);

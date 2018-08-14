@@ -43,6 +43,7 @@ void Renderer::Init(GLFWwindow* window, const uint16_t width, const uint16_t hei
 	});
 	_SkyboxTexture.TransferBufferToImage(_CommandPool);
 
+	// Create and prepare the skybox material
 	Shader vertexSky(&_Device, "CubemapVertex", "shaders/skybox.vert.spv", vk::ShaderStageFlagBits::eVertex);
 	Shader fragmentSky(&_Device, "CubemapFragment", "shaders/skybox.frag.spv", vk::ShaderStageFlagBits::eFragment);
 
@@ -57,20 +58,20 @@ void Renderer::Init(GLFWwindow* window, const uint16_t width, const uint16_t hei
 	_SkyboxMaterial.BindShader(vertexSky);
 	_SkyboxMaterial.BindShader(fragmentSky);
 
-	//// Create and prepare the default material
-	//Shader vertex(&_Device, "Vertex", "shaders/vert.spv", vk::ShaderStageFlagBits::eVertex);
-	//Shader fragment(&_Device, "Fragment", "shaders/frag.spv", vk::ShaderStageFlagBits::eFragment);
+	// Create and prepare the default material
+	Shader vertex(&_Device, "Vertex", "shaders/vert.spv", vk::ShaderStageFlagBits::eVertex);
+	Shader fragment(&_Device, "Fragment", "shaders/frag.spv", vk::ShaderStageFlagBits::eFragment);
 
-	//_BasicMaterial = Material(
-	//	&_Device,
-	//	_Scene,
-	//	_ScreenSize.width,
-	//	_ScreenSize.height,
-	//	static_cast<uint32_t>(_SwapchainImageViews.size())
-	//);
+	_BasicMaterial = Material(
+		&_Device,
+		_Scene,
+		_ScreenSize.width,
+		_ScreenSize.height,
+		static_cast<uint32_t>(_SwapchainImageViews.size() * 1024)
+	);
 
-	//_BasicMaterial.BindShader(vertex);
-	//_BasicMaterial.BindShader(fragment);
+	_BasicMaterial.BindShader(vertex);
+	_BasicMaterial.BindShader(fragment);
 
 	// Load the cube object
 	{
@@ -85,13 +86,13 @@ void Renderer::Init(GLFWwindow* window, const uint16_t width, const uint16_t hei
 
 		_Skybox = Object(&_Device, _Cube, &_SkyboxMaterial, _SwapchainImageViews.size());
 		_Skybox.AddTexture(2, _SkyboxTexture);
-		_Skybox.CreateDescriptorSet(_Device);
+		_Skybox.CreateDescriptorSet();
 	}
 
 	//Load the Sponza object
-	//LoadObj("shaders/Sponza/sponza.obj");
+	LoadObj("shaders/Sponza/sponza.obj");
 
-	//_BasicMaterial.CreatePipeline(_RenderPass);
+	_BasicMaterial.CreatePipeline(_RenderPass);
 	_SkyboxMaterial.CreatePipeline(_RenderPass);
 
 	CreateCommandBuffers();
@@ -246,7 +247,6 @@ void Renderer::PrepareDynamic()
 	Object::uboDynamic.model = (glm::mat4*)_aligned_malloc(bufferSize, Object::dynamicAlignement);
 
 	Object::DynamicBuffer = Buffer(&_Device, vk::BufferUsageFlagBits::eUniformBuffer, bufferSize);
-	//dynamicBuffer.Copy(DeviceRef, uboDynamic.model, bufferSize);
 
 	glm::mat4* modelPtr;
 	for (uint32_t j = 0; j < 2; j++)
@@ -483,29 +483,40 @@ void Renderer::BuildCommandBuffers()
 		vk::SubpassContents::eInline
 	);
 
+	_CommandBuffers[_CurrentFrame].bindDescriptorSets(
+		vk::PipelineBindPoint::eGraphics,
+		_BasicMaterial.GetPipelineLayout(),
+		0,
+		{
+			_Scene->GetDescriptorSet(_CurrentFrame)
+		},
+		{}
+	);
+
+
 	// Draw Sponza
-	//_CommandBuffers[_CurrentFrame].bindPipeline(vk::PipelineBindPoint::eGraphics, _BasicMaterial.GetPipeline());
+	_CommandBuffers[_CurrentFrame].bindPipeline(vk::PipelineBindPoint::eGraphics, _BasicMaterial.GetPipeline());
 
-	//for (uint32_t j = 0; j < _SceneObjects.size(); j++)
-	//{
-	//	_CommandBuffers[_CurrentFrame].bindVertexBuffers(0, { _SceneMeshes[j]._VertexBuffer.GetBuffer() }, { 0 });
+	for (uint32_t j = 0; j < _SceneMeshes.size(); j++)
+	{
+		_CommandBuffers[_CurrentFrame].bindVertexBuffers(0, { _SceneMeshes[j]._VertexBuffer.GetBuffer() }, { 0 });
 
-	//	_CommandBuffers[_CurrentFrame].bindDescriptorSets(
-	//		vk::PipelineBindPoint::eGraphics,
-	//		_BasicMaterial.GetPipelineLayout(),
-	//		0,
-	//		{
-	//			_Scene->GetDescriptorSet(_CurrentFrame),
-	//			_SceneObjects[j].GetDescriptorSet(_CurrentFrame)
-	//		},
-	//		{ 0 }
-	//	);
+		_CommandBuffers[_CurrentFrame].bindDescriptorSets(
+			vk::PipelineBindPoint::eGraphics,
+			_BasicMaterial.GetPipelineLayout(),
+			0,
+			{
+				_Scene->GetDescriptorSet(_CurrentFrame),
+				_SceneObjects[j].GetDescriptorSet(_CurrentFrame)
+			},
+			{ 0 }
+		);
 
-	//	_CommandBuffers[_CurrentFrame].draw(_SceneMeshes[j]._Vertices.size(), 1, 0, 0);
-	//}
+		_CommandBuffers[_CurrentFrame].draw(_SceneMeshes[j]._Vertices.size(), 1, 0, 0);
+	}
 
 
-	// Draw the skybox
+	 //Draw the skybox
 	_CommandBuffers[_CurrentFrame].bindPipeline(vk::PipelineBindPoint::eGraphics, _SkyboxMaterial.GetPipeline());
 
 	_CommandBuffers[_CurrentFrame].bindVertexBuffers(0, { _Cube._VertexBuffer.GetBuffer() }, { 0 });
@@ -513,9 +524,8 @@ void Renderer::BuildCommandBuffers()
 	_CommandBuffers[_CurrentFrame].bindDescriptorSets(
 		vk::PipelineBindPoint::eGraphics,
 		_SkyboxMaterial.GetPipelineLayout(),
-		0,
+		1,
 		{
-			_Scene->GetDescriptorSet(_CurrentFrame),
 			_Skybox.GetDescriptorSet(_CurrentFrame)
 		},
 		{ 1 * static_cast<uint32_t>(Object::dynamicAlignement) }
@@ -554,14 +564,12 @@ void Renderer::LoadObj(const std::string &path)
 	std::string err;
 	bool ret = tinyobj::LoadObj(&attrib, &shapes, &materials, &err, path.c_str(), "shaders/Sponza/");
 
-	//for (const auto& shape : shapes) {
 	for (size_t i = 0; i<shapes.size(); ++i) {
 		Mesh tempMesh(&_Device);
 		tempMesh.Load(shapes.at(i), attrib);
-		_SceneMeshes.push_back(std::move(tempMesh));
+		_SceneMeshes.push_back(tempMesh);
 
-		Object object(&_Device, tempMesh, &_BasicMaterial, static_cast<uint32_t>(_SwapchainImageViews.size()));
-		_SceneObjects.push_back(std::move(object));
+		_SceneObjects.push_back(Object(&_Device, _SceneMeshes.back(), &_BasicMaterial, _SwapchainImageViews.size()));
 
 		// Add the diffuse texture if there are some provided
 		if (materials.at(shapes.at(i).mesh.material_ids.front()).ambient_texname != "") {
@@ -578,7 +586,7 @@ void Renderer::LoadObj(const std::string &path)
 			if (!found) {
 				Texture tempTex(&_Device);
 				tempTex.Load(path, true);
-				_SceneTextures.push_back(std::move(tempTex));
+				_SceneTextures.push_back(tempTex);
 
 				_SceneObjects.back().AddTexture(2, _SceneTextures.back());
 				_SceneTextures.back().TransferBufferToImage(_CommandPool);
@@ -588,7 +596,7 @@ void Renderer::LoadObj(const std::string &path)
 			_SceneObjects.back().AddTexture(2, _SceneTextures.front());
 		}
 
-		_SceneObjects.back().CreateDescriptorSet(_Device);
+		_SceneObjects.back().CreateDescriptorSet();
 	}
 
 }
