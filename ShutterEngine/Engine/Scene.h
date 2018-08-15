@@ -10,17 +10,20 @@
 
 #define NB_LIGHTS 1
 
+// Set to vec4 for alignment purposes
 struct SceneDataObject {
-	struct CameraData {
-		glm::mat4 _View;
-		glm::mat4 _Projection;
-		glm::vec3 _Position;
-	} _CameraData;
+	union alignas(256) Data{
+		struct CameraData {
+			glm::mat4 _View;
+			glm::mat4 _Projection;
+			glm::vec4 _Position;
+		} _CameraData;
 
-	struct LightData {
-		glm::vec3 _Position;
-		glm::vec3 _Colour;
-	} _LightData[NB_LIGHTS];
+		struct LightData {
+			glm::vec4 _Position;
+			glm::vec4 _Colour;
+		} _LightData;
+	} _Data[2];
 };
 
 class Scene {

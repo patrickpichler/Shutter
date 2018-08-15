@@ -149,27 +149,19 @@ void Material::CreateColorBlendInfo()
 
 void Material::CreatePushConstantRange()
 {
-	_PushConstantRange.push_back(vk::PushConstantRange(vk::ShaderStageFlagBits::eFragment, 0, sizeof(glm::vec3)));
 }
 
 void Material::CreateDescriptorSetLayout()
 {
 	_LayoutBindings.push_back(vk::DescriptorSetLayoutBinding(
 		0,
-		vk::DescriptorType::eUniformBuffer,
-		1,
-		vk::ShaderStageFlagBits::eVertex
-	));
-
-	_LayoutBindings.push_back(vk::DescriptorSetLayoutBinding(
-		1,
 		vk::DescriptorType::eUniformBufferDynamic,
 		1,
 		vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment
 	));
 
 	_LayoutBindings.push_back(vk::DescriptorSetLayoutBinding(
-		2,
+		1,
 		vk::DescriptorType::eCombinedImageSampler,
 		1,
 		vk::ShaderStageFlagBits::eFragment

@@ -85,7 +85,7 @@ void Renderer::Init(GLFWwindow* window, const uint16_t width, const uint16_t hei
 		_Cube.Load(shapes.front(), attrib);
 
 		_Skybox = Object(&_Device, _Cube, &_SkyboxMaterial, _SwapchainImageViews.size());
-		_Skybox.AddTexture(2, _SkyboxTexture);
+		_Skybox.AddTexture(1, _SkyboxTexture);
 		_Skybox.CreateDescriptorSet();
 	}
 
@@ -578,7 +578,7 @@ void Renderer::LoadObj(const std::string &path)
 			bool found = false;
 			for (auto &tex : _SceneTextures) {
 				if (tex.GetFilename() == path) {
-					_SceneObjects.back().AddTexture(2, tex);
+					_SceneObjects.back().AddTexture(1, tex);
 					found = true;
 					break;
 				}
@@ -588,12 +588,12 @@ void Renderer::LoadObj(const std::string &path)
 				tempTex.Load(path, true);
 				_SceneTextures.push_back(tempTex);
 
-				_SceneObjects.back().AddTexture(2, _SceneTextures.back());
+				_SceneObjects.back().AddTexture(1, _SceneTextures.back());
 				_SceneTextures.back().TransferBufferToImage(_CommandPool);
 			}
 		}
 		else {
-			_SceneObjects.back().AddTexture(2, _SceneTextures.front());
+			_SceneObjects.back().AddTexture(1, _SceneTextures.front());
 		}
 
 		_SceneObjects.back().CreateDescriptorSet();

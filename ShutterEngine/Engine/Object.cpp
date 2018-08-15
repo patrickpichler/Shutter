@@ -32,7 +32,7 @@ void Object::CreateDescriptorSet()
 		// Model Matrix
 		descriptorWrites.push_back(vk::WriteDescriptorSet(
 			descSet,
-			1,
+			0,
 			0,
 			1,
 			vk::DescriptorType::eUniformBufferDynamic,
