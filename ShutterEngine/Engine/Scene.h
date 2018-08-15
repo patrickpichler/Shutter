@@ -22,7 +22,8 @@ struct SceneDataObject {
 		struct LightData {
 			glm::vec4 _Position;
 			glm::vec4 _Colour;
-		} _LightData;
+			glm::vec4 _Parameters;
+		} _LightData[2];
 	} _Data[2];
 };
 

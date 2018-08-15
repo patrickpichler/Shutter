@@ -61,8 +61,14 @@ void Scene::Update(const uint32_t image)
 	_SceneDataObjects.at(image)._Data[0]._CameraData._View = _Camera->GetView();
 
 	// Add a white light in 0,0,0
-	_SceneDataObjects.at(image)._Data[1]._LightData._Position = glm::vec4(.0f, .0f, .0f, .0f);
-	_SceneDataObjects.at(image)._Data[1]._LightData._Colour = glm::vec4(1.0f, 1.0f, 1.0f, .0f);
+	_SceneDataObjects.at(image)._Data[1]._LightData[0]._Position = glm::vec4(.0f, .0f, 2.0f, .0f);
+	_SceneDataObjects.at(image)._Data[1]._LightData[0]._Colour = glm::vec4(1.0f, 1.0f, 1.0f, .0f);
+	_SceneDataObjects.at(image)._Data[1]._LightData[0]._Parameters = glm::vec4(1.0f, .014f, .007f, .0f);
+
+	// Add a red light in 10,10,0
+	_SceneDataObjects.at(image)._Data[1]._LightData[1]._Position = glm::vec4(0.0f, .0f, 5.0f, .0f);
+	_SceneDataObjects.at(image)._Data[1]._LightData[1]._Colour = glm::vec4(1.0f, .0f, .0f, .0f);
+	_SceneDataObjects.at(image)._Data[1]._LightData[1]._Parameters = glm::vec4(1.0f, .35f, 0.44f, .0f);
 
 	_SceneDataBuffers.at(image).Copy(&_SceneDataObjects.at(image)._Data, sizeof(SceneDataObject::Data) * 2);
 }
