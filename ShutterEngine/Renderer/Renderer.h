@@ -46,6 +46,8 @@ public:
 
 	void WaitIdle();
 
+	void ReloadShaders();
+
 private:
 	void CreateInstance();
 	void CreateDevice();

@@ -17,7 +17,11 @@ public:
 		const uint32_t poolSize
 	);
 
+	void ReloadPipeline(const vk::RenderPass &renderPass, const uint16_t width, const uint16_t height);
+
 	void BindShader(const Shader &shader);
+	void ClearShaders();
+	std::vector<Shader> GetShaderList();
 
 	void CreatePipeline(const vk::RenderPass &renderPass);
 

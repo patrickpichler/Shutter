@@ -15,9 +15,6 @@ public:
 		const vk::ShaderStageFlagBits stage,
 		const std::string &entrypoint = "main"
 	);
-	~Shader() {
-		Clean();
-	}
 
 	void Clean();
 
@@ -35,12 +32,14 @@ private:
 public:
 	vk::ShaderStageFlagBits _Stage;
 
-private:
-	Device *_Device;
 
 	std::string _Name;
-	std::vector<char> _Code;
+	std::string _Filename;
 	std::string _EntryPoint;
+
+private:
+	Device *_Device;
+	std::vector<char> _Code;
 
 	vk::ShaderModule _Module;
 };

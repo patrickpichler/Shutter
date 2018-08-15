@@ -15,6 +15,10 @@ public:
 	void Run();
 	void Clean();
 
+	void TriggerShaderReload();
+
+	static void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
+
 private:
 	void DrawFrame();
 
@@ -30,7 +34,8 @@ private:
 		UP = GLFW_KEY_W,
 		LEFT = GLFW_KEY_A,
 		DOWN = GLFW_KEY_S,
-		RIGHT = GLFW_KEY_D
+		RIGHT = GLFW_KEY_D,
+		RELOAD = GLFW_KEY_R
 	};
 
 	Camera _Camera;
@@ -38,4 +43,6 @@ private:
 
 	double horizontalAngle;
 	double verticalAngle;
+
+	bool shaderReaload;
 };

@@ -11,6 +11,7 @@ Shader::Shader(
 	_Device(device),
 	_Stage(stage),
 	_Name(shaderName),
+	_Filename(filename),
 	_EntryPoint(entrypoint)
 {
 	LoadFile(filename);
@@ -19,7 +20,7 @@ Shader::Shader(
 
 void Shader::Clean()
 {
-	//_Device->GetDevice().destroyShaderModule(_Module);
+	_Device->GetDevice().destroyShaderModule(_Module);
 }
 
 vk::PipelineShaderStageCreateInfo Shader::GetShaderPipelineInfo() const

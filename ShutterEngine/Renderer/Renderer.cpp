@@ -179,6 +179,31 @@ void Renderer::WaitIdle()
 	_Device().waitIdle();
 }
 
+void Renderer::ReloadShaders()
+{
+	// Reload the basic Material
+	std::vector<Shader> shaders =  _BasicMaterial.GetShaderList();
+	_BasicMaterial.ClearShaders();
+
+	for (auto &shader : shaders) {
+		Shader newShader(&_Device, shader._Name, shader._Filename, shader._Stage, shader._EntryPoint);
+		shader.Clean();
+		_BasicMaterial.BindShader(newShader);
+	}
+	_BasicMaterial.ReloadPipeline(_RenderPass, _ScreenSize.width, _ScreenSize.height);
+
+	// Reload the skybox Material
+	shaders = _SkyboxMaterial.GetShaderList();
+	_SkyboxMaterial.ClearShaders();
+
+	for (auto &shader : shaders) {
+		Shader newShader(&_Device, shader._Name, shader._Filename, shader._Stage, shader._EntryPoint);
+		shader.Clean();
+		_SkyboxMaterial.BindShader(newShader);
+	}
+	_SkyboxMaterial.ReloadPipeline(_RenderPass, _ScreenSize.width, _ScreenSize.height);
+}
+
 void Renderer::CreateInstance()
 {
 	vk::ApplicationInfo applicationInfo("Demo", VK_MAKE_VERSION(1, 0, 0), "Shutter", VK_MAKE_VERSION(1, 0, 0), VULKAN_VERSION);

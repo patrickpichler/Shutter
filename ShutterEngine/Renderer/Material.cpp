@@ -23,11 +23,24 @@ Material::Material(Device *device, Scene *scene, const uint16_t width, const uin
 	);
 }
 
+void Material::ReloadPipeline(const vk::RenderPass &renderPass, const uint16_t width, const uint16_t height)
+{
+	_Device->GetDevice().destroyPipeline(_Pipeline);
+
+	PopulateInfo(1024, 768);
+	CreatePipeline(renderPass);
+}
+
 void Material::BindShader(const Shader & shader)
 {
 	if (!_ShaderMap.emplace(std::make_pair(shader._Stage, shader)).second) {
 		throw std::runtime_error("Shader already bound for this stage.");
 	}
+}
+
+void Material::ClearShaders()
+{
+	_ShaderMap.clear();
 }
 
 void Material::CreatePipeline(const vk::RenderPass &renderPass)
@@ -181,6 +194,17 @@ void Material::CreateDescriptorPool(const uint32_t poolSize)
 	}
 
 	_DescriptorPool = _Device->GetDevice().createDescriptorPool(vk::DescriptorPoolCreateInfo({}, poolSize, poolSizes.size(), poolSizes.data()));
+}
+
+
+std::vector<Shader> Material::GetShaderList()
+{
+	std::vector<Shader> shaderList;
+	for (auto &shader : _ShaderMap) {
+		shaderList.push_back(shader.second);
+	}
+
+	return shaderList;
 }
 
 std::vector<vk::PipelineShaderStageCreateInfo> Material::GetShaderInfoList()
