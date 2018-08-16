@@ -27,14 +27,15 @@ public:
 	const glm::mat4 GetModelMatrix() const;
 
 private:
-	Mesh _Mesh;
 	Material *_Material;
 
 
 public:
+	Mesh _Mesh;
 	glm::vec3 _Position;
 	glm::vec3 _Rotation;
 	glm::vec3 _Scale;
+	uint32_t _DynamicIndex;
 
 	static Buffer DynamicBuffer;
 	static uint32_t dynamicAlignement;

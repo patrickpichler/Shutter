@@ -74,9 +74,9 @@ const glm::mat4 Object::GetModelMatrix() const
 	glm::mat4 model;
 
 	model = glm::translate(glm::mat4(1.0f), _Position);
-	model = glm::rotate(model, _Rotation.x, glm::vec3(1.0f, 0.0f, 0.0f));
-	model = glm::rotate(model, _Rotation.y, glm::vec3(0.0f, 1.0f, 0.0f));
-	model = glm::rotate(model, _Rotation.z, glm::vec3(0.0f, 0.0f, 1.0f));
+	model = glm::rotate(model, glm::radians(_Rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
+	model = glm::rotate(model, glm::radians(_Rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
+	model = glm::rotate(model, glm::radians(_Rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
 	model = glm::scale(model, _Scale);
 
 	return model;

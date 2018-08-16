@@ -7,3 +7,6 @@
 [submodule "ShutterEngine/Ext/glfw"]
 	path = ShutterEngine/Ext/glfw
 	url = https://github.com/glfw/glfw.git
+[submodule "ShutterEngine/Ext/yaml-cpp"]
+	path = ShutterEngine/Ext/yaml-cpp
+	url = https://github.com/jbeder/yaml-cpp.git

@@ -1,6 +1,7 @@
 #include "Material.h"
 #include "Engine/Mesh.h"
 #include "Helpers.h"
+#include "Engine/Scene.h"
 
 Material::Material(Device *device, Scene *scene, const uint16_t width, const uint16_t height, const uint32_t poolSize) :
 	_Device(device),

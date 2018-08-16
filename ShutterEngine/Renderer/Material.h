@@ -4,7 +4,8 @@
 #include <vector>
 #include <unordered_map>
 #include "Shader.h"
-#include "Engine/Scene.h"
+
+class Scene;
 
 class Material {
 public:

@@ -1,4 +1,192 @@
 #include "Scene.h"
+#include "yaml-cpp/yaml.h"
+
+namespace YAML {
+	template<>
+	struct convert<glm::vec3> {
+		static Node encode(const glm::vec3& rhs) {
+			Node node;
+			node.push_back(rhs.x);
+			node.push_back(rhs.y);
+			node.push_back(rhs.z);
+			return node;
+		}
+
+		static bool decode(const Node& node, glm::vec3& rhs) {
+			if (!node.IsSequence() || node.size() != 3) {
+				return false;
+			}
+
+			rhs.x = node[0].as<double>();
+			rhs.y = node[1].as<double>();
+			rhs.z = node[2].as<double>();
+			return true;
+		}
+	};
+}
+
+void Scene::Load(const std::string &name, Device *device, const vk::CommandPool &cmdPool, const vk::RenderPass &renderPass) {
+	CreateDynamic(device);
+	std::string root = "Data/" + name + "/";
+
+	YAML::Node config = YAML::LoadFile(root + "info.yaml");
+
+	// Set the scene name
+	_Name = config["name"].as<std::string>();
+	
+	// Load the lights
+	_Lights.resize(config["lights"].size());
+	for (int i = 0; i < _Lights.size() ; ++i) {
+		std::string name = config["lights"][i]["name"].as<std::string>();
+		glm::vec3 position = config["lights"][i]["position"].as<glm::vec3>();
+
+		_Lights[i] = Light(name, position);
+		_Lights[i]._Colour = config["lights"][i]["colour"].as<glm::vec3>();
+		_Lights[i].SetRange(config["lights"][i]["range"].as<double>());
+	}
+
+	// Load the camera
+	{
+		std::string name = config["cameras"][0]["name"].as<std::string>();
+		glm::vec3 position = config["cameras"][0]["position"].as<glm::vec3>();
+		float fov = config["cameras"][0]["fov"].as<float>();
+
+		_Camera = Camera(name, fov, 1024, 768, position, glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 1.0));
+	}
+
+	// Load the materials
+	for (int i = 0; i < config["materials"].size(); ++i) {
+		// Load the shaders
+		std::string vertex = config["materials"][i]["shaders"]["vertex"].as<std::string>();
+		Shader vert(device, vertex, root + "shaders/" + vertex, vk::ShaderStageFlagBits::eVertex);
+
+		std::string fragment = config["materials"][i]["shaders"]["fragment"].as<std::string>();
+		Shader frag(device, fragment, root + "shaders/" + fragment, vk::ShaderStageFlagBits::eFragment);
+
+		std::string name = config["materials"][i]["name"].as<std::string>();
+
+		// Find the type
+		std::string pipeline = config["materials"][i]["pipeline"].as<std::string>();
+		if (pipeline == "basic") {
+			// Create the material
+			Material mat(device, this, 1024, 768, 1024);
+			mat.BindShader(vert);
+			mat.BindShader(frag);
+			mat.CreatePipeline(renderPass);
+			_Materials.insert(std::pair<std::string, Material>(name, mat));
+		}
+		else if (pipeline == "cubemap") {
+			// Create the material
+			Cubemap mat(device, this, 1024, 768, 1024);
+			mat.BindShader(vert);
+			mat.BindShader(frag);
+			mat.CreatePipeline(renderPass);
+			_Materials.insert(std::pair<std::string, Material>(name, mat));
+		}
+		_Objects.insert(std::pair<std::string, std::vector<Object>>(name, std::vector<Object>()));
+	}
+
+	// Load the models
+	//_Models.resize(config["models"].size());
+	for (int i = 0; i < config["models"].size(); ++i) {
+		std::string filename = config["models"][i]["filename"].as<std::string>();
+		std::unordered_map<std::string, Mesh> temp = Mesh::Load(device, root + "models/" + filename, root);
+		_Models.insert(temp.begin(), temp.end());
+	}
+
+	// Load the textures
+	for (int i = 0; i < config["textures"].size(); ++i) {
+		std::string filename = config["textures"][i]["name"].as<std::string>();
+		std::string type = config["textures"][i]["type"].as<std::string>();
+		bool mipmap = config["textures"][i]["mipmap"].as<bool>();
+
+		if (type == "normal") {
+			Texture temp(device);
+			temp.Load(root + "textures/" + filename, mipmap);
+			temp.TransferBufferToImage(cmdPool);
+
+			_Textures.insert(std::pair<std::string, Texture>(filename, temp));
+		}
+		else if (type == "cube") {
+			CubeTexture temp(device);
+			temp.Load({
+				root + "textures/" + filename + "/posx.jpg",
+				root + "textures/" + filename + "/negx.jpg",
+				root + "textures/" + filename + "/posy.jpg",
+				root + "textures/" + filename + "/negy.jpg",
+				root + "textures/" + filename + "/posz.jpg",
+				root + "textures/" + filename + "/negz.jpg"
+			});
+			temp.TransferBufferToImage(cmdPool);
+
+			_Textures.insert(std::pair<std::string, Texture>(filename, temp));
+		}
+	}
+
+
+	YAML::Node scene = YAML::LoadFile(root + "scene.yaml");
+
+	// Load the objects
+	//_Objects.resize(scene["scene"].size());
+	for (int i = 0; i < scene["scene"].size(); ++i) {
+		std::string model = scene["scene"][i]["model"].as<std::string>();
+
+		std::string material = scene["scene"][i]["material"].as<std::string>();
+		Material *materialM = &_Materials.at(material);
+
+		glm::vec3 position = scene["scene"][i]["position"].as<glm::vec3>();
+		glm::vec3 rotation = scene["scene"][i]["rotation"].as<glm::vec3>();
+		glm::vec3 scale = scene["scene"][i]["scale"].as<glm::vec3>();
+
+		_Objects[material].push_back(Object(device, _Models.at(model), materialM, 2));
+		_Objects[material].back()._Position = position;
+		_Objects[material].back()._Rotation = rotation;
+		_Objects[material].back()._Scale = scale;
+
+		if (scene["scene"][i]["textures"]) {
+			int slot = scene["scene"][i]["textures"][0]["slot"].as<int>();
+			std::string name = scene["scene"][i]["textures"][0]["texture"].as<std::string>();
+			Texture texture = _Textures.at(name);
+			_Objects[material].back().AddTexture(slot, texture);
+		}
+
+		_Objects[material].back()._DynamicIndex = AddToDynamic(_Objects[material].back());
+		_Objects[material].back().CreateDescriptorSet();
+	}
+
+	UploadDynamic();
+}
+
+void Scene::CreateDynamic(Device *device)
+{
+	uint32_t minAlignement = device->GetProperties().limits.minUniformBufferOffsetAlignment;
+	Object::dynamicAlignement = sizeof(glm::mat4);
+
+	if (minAlignement > 0) {
+		Object::dynamicAlignement = (Object::dynamicAlignement + minAlignement - 1) & ~(minAlignement - 1);
+	}
+
+	uint32_t bufferSize = 1024 * Object::dynamicAlignement;
+	Object::uboDynamic.model = (glm::mat4*)_aligned_malloc(bufferSize, Object::dynamicAlignement);
+
+	Object::DynamicBuffer = Buffer(device, vk::BufferUsageFlagBits::eUniformBuffer, bufferSize);
+}
+
+uint32_t Scene::AddToDynamic(const Object & object)
+{
+	uint32_t oldIndex = dynamicIndex;
+	glm::mat4* modelPtr = (glm::mat4*)(((uint64_t)Object::uboDynamic.model + (oldIndex * Object::dynamicAlignement)));
+	*modelPtr = object.GetModelMatrix();
+
+	dynamicIndex++;
+	return oldIndex;
+}
+
+void Scene::UploadDynamic()
+{
+	uint32_t bufferSize = 1024 * Object::dynamicAlignement;
+	Object::DynamicBuffer.Copy(Object::uboDynamic.model, bufferSize);
+}
 
 void Scene::CreateDescriptorSets(Device *device, const uint32_t nbImages)
 {
@@ -30,7 +218,7 @@ void Scene::CreateDescriptorSets(Device *device, const uint32_t nbImages)
 			&vk::DescriptorBufferInfo(
 				_SceneDataBuffers[i].GetBuffer(),
 				0,
-				sizeof(SceneDataObject::Data::CameraData)
+				sizeof(CameraUniformData)
 			),
 			nullptr
 		);
@@ -38,7 +226,7 @@ void Scene::CreateDescriptorSets(Device *device, const uint32_t nbImages)
 		vk::DescriptorBufferInfo lightInfo = {
 			_SceneDataBuffers.at(i).GetBuffer(),
 			alignof(SceneDataObject::Data),
-			sizeof(SceneDataObject::Data::LightData)
+			sizeof(LightUniformData)
 		};
 
 		vk::WriteDescriptorSet lightDescriptor(
@@ -56,19 +244,10 @@ void Scene::CreateDescriptorSets(Device *device, const uint32_t nbImages)
 void Scene::Update(const uint32_t image)
 {
 	// Prepare the camera
-	_SceneDataObjects.at(image)._Data[0]._CameraData._Position = glm::vec4(0.0f, 0.0f, 0.0f, 0.0f);
-	_SceneDataObjects.at(image)._Data[0]._CameraData._Projection = _Camera->GetProjection();
-	_SceneDataObjects.at(image)._Data[0]._CameraData._View = _Camera->GetView();
+	_SceneDataObjects.at(image)._Data[0]._CameraData = _Camera.GetUniformData();
 
-	// Add a white light in 0,0,0
-	_SceneDataObjects.at(image)._Data[1]._LightData[0]._Position = glm::vec4(.0f, .0f, 2.0f, .0f);
-	_SceneDataObjects.at(image)._Data[1]._LightData[0]._Colour = glm::vec4(1.0f, 1.0f, 1.0f, .0f);
-	_SceneDataObjects.at(image)._Data[1]._LightData[0]._Parameters = glm::vec4(1.0f, .014f, .007f, .0f);
-
-	// Add a red light in 10,10,0
-	_SceneDataObjects.at(image)._Data[1]._LightData[1]._Position = glm::vec4(0.0f, .0f, 5.0f, .0f);
-	_SceneDataObjects.at(image)._Data[1]._LightData[1]._Colour = glm::vec4(1.0f, .0f, .0f, .0f);
-	_SceneDataObjects.at(image)._Data[1]._LightData[1]._Parameters = glm::vec4(1.0f, .35f, 0.44f, .0f);
+	_SceneDataObjects.at(image)._Data[1]._LightData[0] = _Lights[0].GetUniformData();
+	_SceneDataObjects.at(image)._Data[1]._LightData[1] = _Lights[1].GetUniformData();
 
 	_SceneDataBuffers.at(image).Copy(&_SceneDataObjects.at(image)._Data, sizeof(SceneDataObject::Data) * 2);
 }

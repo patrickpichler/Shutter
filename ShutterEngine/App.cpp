@@ -19,19 +19,10 @@ void Application::Init()
 	glfwSetWindowUserPointer(Window, this);
 	glfwSetKeyCallback(Window, Application::KeyCallback);
 
-	_Camera = Camera(
-		45.0f,
-		_Width,
-		_Height,
-		glm::vec3(0.0f, 8.0f, 5.0f),
-		glm::vec3(0.f, -1.f, 0.f),
-		glm::vec3(0.f, 0.f, 1.f)
-	);
-
 	_Scene = Scene();
-	_Scene._Camera = &_Camera;
-
 	render.Init(Window, _Width, _Height, &_Scene);
+	glfwSetWindowTitle(Window, _Scene._Name.c_str());
+	_Camera = &_Scene._Camera;
 }
 
 void Application::Run()
@@ -44,7 +35,7 @@ void Application::Run()
 		double mouseX, mouseY;
 		glfwGetCursorPos(Window, &mouseX, &mouseY);
 
-		_Camera.Update(
+		_Camera->Update(
 			mouseX - prevMouseX,
 			mouseY - prevMouseY,
 			Direction{

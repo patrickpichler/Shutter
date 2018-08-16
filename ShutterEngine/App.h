@@ -38,7 +38,7 @@ private:
 		RELOAD = GLFW_KEY_R
 	};
 
-	Camera _Camera;
+	Camera *_Camera;
 	Scene _Scene;
 
 	double horizontalAngle;
