@@ -118,27 +118,27 @@ void Renderer::WaitIdle()
 
 void Renderer::ReloadShaders()
 {
-	// Reload the basic Material
-	std::vector<Shader> shaders =  _BasicMaterial.GetShaderList();
-	_BasicMaterial.ClearShaders();
+	//// Reload the basic Material
+	//std::vector<Shader> shaders =  _BasicMaterial.GetShaderList();
+	//_BasicMaterial.ClearShaders();
 
-	for (auto &shader : shaders) {
-		Shader newShader(&_Device, shader._Name, shader._Filename, shader._Stage, shader._EntryPoint);
-		shader.Clean();
-		_BasicMaterial.BindShader(newShader);
-	}
-	_BasicMaterial.ReloadPipeline(_RenderPass, _ScreenSize.width, _ScreenSize.height);
+	//for (auto &shader : shaders) {
+	//	Shader newShader(&_Device, shader._Name, shader._Filename, shader._Stage, shader._EntryPoint);
+	//	shader.Clean();
+	//	_BasicMaterial.BindShader(newShader);
+	//}
+	//_BasicMaterial.ReloadPipeline(_RenderPass, _ScreenSize.width, _ScreenSize.height);
 
-	// Reload the skybox Material
-	shaders = _SkyboxMaterial.GetShaderList();
-	_SkyboxMaterial.ClearShaders();
+	//// Reload the skybox Material
+	//shaders = _SkyboxMaterial.GetShaderList();
+	//_SkyboxMaterial.ClearShaders();
 
-	for (auto &shader : shaders) {
-		Shader newShader(&_Device, shader._Name, shader._Filename, shader._Stage, shader._EntryPoint);
-		shader.Clean();
-		_SkyboxMaterial.BindShader(newShader);
-	}
-	_SkyboxMaterial.ReloadPipeline(_RenderPass, _ScreenSize.width, _ScreenSize.height);
+	//for (auto &shader : shaders) {
+	//	Shader newShader(&_Device, shader._Name, shader._Filename, shader._Stage, shader._EntryPoint);
+	//	shader.Clean();
+	//	_SkyboxMaterial.BindShader(newShader);
+	//}
+	//_SkyboxMaterial.ReloadPipeline(_RenderPass, _ScreenSize.width, _ScreenSize.height);
 }
 
 void Renderer::CreateInstance()
@@ -442,46 +442,6 @@ void Renderer::BuildCommandBuffers()
 			_CommandBuffers[_CurrentFrame].draw(object._Mesh._Vertices.size(), 1, 0, 0);
 		}
 	}
-
-
-	//// Draw Sponza
-	//_CommandBuffers[_CurrentFrame].bindPipeline(vk::PipelineBindPoint::eGraphics, _BasicMaterial.GetPipeline());
-
-	//for (uint32_t j = 0; j < _SceneMeshes.size(); j++)
-	//{
-	//	_CommandBuffers[_CurrentFrame].bindVertexBuffers(0, { _SceneMeshes[j]._VertexBuffer.GetBuffer() }, { 0 });
-
-	//	_CommandBuffers[_CurrentFrame].bindDescriptorSets(
-	//		vk::PipelineBindPoint::eGraphics,
-	//		_BasicMaterial.GetPipelineLayout(),
-	//		0,
-	//		{
-	//			_Scene->GetDescriptorSet(_CurrentFrame),
-	//			_SceneObjects[j].GetDescriptorSet(_CurrentFrame)
-	//		},
-	//		{ 0 }
-	//	);
-
-	//	_CommandBuffers[_CurrentFrame].draw(_SceneMeshes[j]._Vertices.size(), 1, 0, 0);
-	//}
-
-
-	// //Draw the skybox
-	//_CommandBuffers[_CurrentFrame].bindPipeline(vk::PipelineBindPoint::eGraphics, _SkyboxMaterial.GetPipeline());
-
-	//_CommandBuffers[_CurrentFrame].bindVertexBuffers(0, { _Cube._VertexBuffer.GetBuffer() }, { 0 });
-
-	//_CommandBuffers[_CurrentFrame].bindDescriptorSets(
-	//	vk::PipelineBindPoint::eGraphics,
-	//	_SkyboxMaterial.GetPipelineLayout(),
-	//	1,
-	//	{
-	//		_Skybox.GetDescriptorSet(_CurrentFrame)
-	//	},
-	//	{ 1 * static_cast<uint32_t>(Object::dynamicAlignement) }
-	//);
-
-	//_CommandBuffers[_CurrentFrame].draw(_Cube._Vertices.size(), 1, 0, 0);
 
 	_CommandBuffers[_CurrentFrame].endRenderPass();
 	_CommandBuffers[_CurrentFrame].end();
