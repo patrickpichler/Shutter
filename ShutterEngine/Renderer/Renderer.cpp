@@ -20,7 +20,6 @@ void Renderer::Init(GLFWwindow* window, const uint16_t width, const uint16_t hei
 	CreateSwapchain();
 
 	_Scene->CreateDescriptorSets(&_Device, _SwapchainImageViews.size());
-	PrepareDynamic();
 	CreateCommandPool();
 
 	CreateDepth();
@@ -31,69 +30,7 @@ void Renderer::Init(GLFWwindow* window, const uint16_t width, const uint16_t hei
 	CreateFramebuffers();
 
 
-	// Create and prepare the cubemap material
-	_SkyboxTexture = CubeTexture(&_Device);
-	_SkyboxTexture.Load({
-		"shaders/cubemap/posx.jpg",
-		"shaders/cubemap/negx.jpg",
-		"shaders/cubemap/posy.jpg",
-		"shaders/cubemap/negy.jpg",
-		"shaders/cubemap/posz.jpg",
-		"shaders/cubemap/negz.jpg"
-	});
-	_SkyboxTexture.TransferBufferToImage(_CommandPool);
-
-	// Create and prepare the skybox material
-	Shader vertexSky(&_Device, "CubemapVertex", "shaders/skybox.vert.spv", vk::ShaderStageFlagBits::eVertex);
-	Shader fragmentSky(&_Device, "CubemapFragment", "shaders/skybox.frag.spv", vk::ShaderStageFlagBits::eFragment);
-
-	_SkyboxMaterial = Cubemap(
-		&_Device,
-		_Scene,
-		_ScreenSize.width,
-		_ScreenSize.height,
-		static_cast<uint32_t>(_SwapchainImageViews.size())
-	);
-
-	_SkyboxMaterial.BindShader(vertexSky);
-	_SkyboxMaterial.BindShader(fragmentSky);
-
-	// Create and prepare the default material
-	Shader vertex(&_Device, "Vertex", "shaders/vert.spv", vk::ShaderStageFlagBits::eVertex);
-	Shader fragment(&_Device, "Fragment", "shaders/frag.spv", vk::ShaderStageFlagBits::eFragment);
-
-	_BasicMaterial = Material(
-		&_Device,
-		_Scene,
-		_ScreenSize.width,
-		_ScreenSize.height,
-		static_cast<uint32_t>(_SwapchainImageViews.size() * 1024)
-	);
-
-	_BasicMaterial.BindShader(vertex);
-	_BasicMaterial.BindShader(fragment);
-
-	// Load the cube object
-	{
-		tinyobj::attrib_t attrib;
-		std::vector<tinyobj::shape_t> shapes;
-		std::vector<tinyobj::material_t> materials;
-
-		std::string err;
-		bool ret = tinyobj::LoadObj(&attrib, &shapes, &materials, &err, "shaders/cube2.obj");
-		_Cube = Mesh(&_Device);
-		_Cube.Load(shapes.front(), attrib);
-
-		_Skybox = Object(&_Device, _Cube, &_SkyboxMaterial, _SwapchainImageViews.size());
-		_Skybox.AddTexture(1, _SkyboxTexture);
-		_Skybox.CreateDescriptorSet();
-	}
-
-	//Load the Sponza object
-	LoadObj("shaders/Sponza/sponza.obj");
-
-	_BasicMaterial.CreatePipeline(_RenderPass);
-	_SkyboxMaterial.CreatePipeline(_RenderPass);
+	_Scene->Load("sponza", &_Device, _CommandPool, _RenderPass);
 
 	CreateCommandBuffers();
 	CreateSemaphores();
@@ -181,27 +118,27 @@ void Renderer::WaitIdle()
 
 void Renderer::ReloadShaders()
 {
-	// Reload the basic Material
-	std::vector<Shader> shaders =  _BasicMaterial.GetShaderList();
-	_BasicMaterial.ClearShaders();
+	//// Reload the basic Material
+	//std::vector<Shader> shaders =  _BasicMaterial.GetShaderList();
+	//_BasicMaterial.ClearShaders();
 
-	for (auto &shader : shaders) {
-		Shader newShader(&_Device, shader._Name, shader._Filename, shader._Stage, shader._EntryPoint);
-		shader.Clean();
-		_BasicMaterial.BindShader(newShader);
-	}
-	_BasicMaterial.ReloadPipeline(_RenderPass, _ScreenSize.width, _ScreenSize.height);
+	//for (auto &shader : shaders) {
+	//	Shader newShader(&_Device, shader._Name, shader._Filename, shader._Stage, shader._EntryPoint);
+	//	shader.Clean();
+	//	_BasicMaterial.BindShader(newShader);
+	//}
+	//_BasicMaterial.ReloadPipeline(_RenderPass, _ScreenSize.width, _ScreenSize.height);
 
-	// Reload the skybox Material
-	shaders = _SkyboxMaterial.GetShaderList();
-	_SkyboxMaterial.ClearShaders();
+	//// Reload the skybox Material
+	//shaders = _SkyboxMaterial.GetShaderList();
+	//_SkyboxMaterial.ClearShaders();
 
-	for (auto &shader : shaders) {
-		Shader newShader(&_Device, shader._Name, shader._Filename, shader._Stage, shader._EntryPoint);
-		shader.Clean();
-		_SkyboxMaterial.BindShader(newShader);
-	}
-	_SkyboxMaterial.ReloadPipeline(_RenderPass, _ScreenSize.width, _ScreenSize.height);
+	//for (auto &shader : shaders) {
+	//	Shader newShader(&_Device, shader._Name, shader._Filename, shader._Stage, shader._EntryPoint);
+	//	shader.Clean();
+	//	_SkyboxMaterial.BindShader(newShader);
+	//}
+	//_SkyboxMaterial.ReloadPipeline(_RenderPass, _ScreenSize.width, _ScreenSize.height);
 }
 
 void Renderer::CreateInstance()
@@ -257,40 +194,6 @@ void Renderer::CreateDevice() {
 void Renderer::CreateSurface()
 {
 	_Surface = _Instance.createWin32SurfaceKHR(vk::Win32SurfaceCreateInfoKHR({}, GetModuleHandle(nullptr), glfwGetWin32Window(_Window)));
-}
-
-void Renderer::PrepareDynamic()
-{
-	uint32_t minAlignement = _Device.GetProperties().limits.minUniformBufferOffsetAlignment;
-	Object::dynamicAlignement = sizeof(glm::mat4);
-
-	if (minAlignement > 0) {
-		Object::dynamicAlignement = (Object::dynamicAlignement + minAlignement - 1) & ~(minAlignement - 1);
-	}
-
-	uint32_t bufferSize = 2 * Object::dynamicAlignement;
-	Object::uboDynamic.model = (glm::mat4*)_aligned_malloc(bufferSize, Object::dynamicAlignement);
-
-	Object::DynamicBuffer = Buffer(&_Device, vk::BufferUsageFlagBits::eUniformBuffer, bufferSize);
-
-	glm::mat4* modelPtr;
-	for (uint32_t j = 0; j < 2; j++)
-	{
-		modelPtr = (glm::mat4*)(((uint64_t)Object::uboDynamic.model + (j * Object::dynamicAlignement)));
-
-		_Apple._Position = glm::vec3(0.0 + 3.0*j, 0.0, 0.0);
-		_Apple._Rotation = glm::vec3(glm::radians(90.0f), glm::radians(90.0f), 0.0f);
-		_Apple._Scale = glm::vec3(0.01f);
-		*modelPtr = _Apple.GetModelMatrix();
-	}
-	modelPtr = (glm::mat4*)(((uint64_t)Object::uboDynamic.model + (1 * Object::dynamicAlignement)));
-
-	_Apple._Position = glm::vec3(0.0, 0.0, 0.0);
-	_Apple._Rotation = glm::vec3(glm::radians(90.0f), glm::radians(90.0f), 0.0f);
-	_Apple._Scale = glm::vec3(5.0f);
-	*modelPtr = _Apple.GetModelMatrix();
-
-	Object::DynamicBuffer.Copy(Object::uboDynamic.model, bufferSize);
 }
 
 void Renderer::CreateSwapchain()
@@ -510,7 +413,7 @@ void Renderer::BuildCommandBuffers()
 
 	_CommandBuffers[_CurrentFrame].bindDescriptorSets(
 		vk::PipelineBindPoint::eGraphics,
-		_BasicMaterial.GetPipelineLayout(),
+		_Scene->_Materials.at("basic").GetPipelineLayout(),
 		0,
 		{
 			_Scene->GetDescriptorSet(_CurrentFrame)
@@ -518,45 +421,27 @@ void Renderer::BuildCommandBuffers()
 		{}
 	);
 
+	for (const auto &mat : _Scene->_Materials) {
+		_CommandBuffers[_CurrentFrame].bindPipeline(vk::PipelineBindPoint::eGraphics, mat.second.GetPipeline());
 
-	// Draw Sponza
-	_CommandBuffers[_CurrentFrame].bindPipeline(vk::PipelineBindPoint::eGraphics, _BasicMaterial.GetPipeline());
 
-	for (uint32_t j = 0; j < _SceneMeshes.size(); j++)
-	{
-		_CommandBuffers[_CurrentFrame].bindVertexBuffers(0, { _SceneMeshes[j]._VertexBuffer.GetBuffer() }, { 0 });
+		for (const auto &object : _Scene->_Objects[mat.first]) {
+			_CommandBuffers[_CurrentFrame].bindVertexBuffers(0, { object._Mesh._VertexBuffer.GetBuffer() }, { 0 });
 
-		_CommandBuffers[_CurrentFrame].bindDescriptorSets(
-			vk::PipelineBindPoint::eGraphics,
-			_BasicMaterial.GetPipelineLayout(),
-			0,
-			{
-				_Scene->GetDescriptorSet(_CurrentFrame),
-				_SceneObjects[j].GetDescriptorSet(_CurrentFrame)
-			},
-			{ 0 }
-		);
+			_CommandBuffers[_CurrentFrame].bindDescriptorSets(
+				vk::PipelineBindPoint::eGraphics,
+				mat.second.GetPipelineLayout(),
+				0,
+				{
+					_Scene->GetDescriptorSet(_CurrentFrame),
+					object.GetDescriptorSet(_CurrentFrame)
+				},
+				{ object._DynamicIndex * static_cast<uint32_t>(Object::dynamicAlignement) }
+			);
 
-		_CommandBuffers[_CurrentFrame].draw(_SceneMeshes[j]._Vertices.size(), 1, 0, 0);
+			_CommandBuffers[_CurrentFrame].draw(object._Mesh._Vertices.size(), 1, 0, 0);
+		}
 	}
-
-
-	 //Draw the skybox
-	_CommandBuffers[_CurrentFrame].bindPipeline(vk::PipelineBindPoint::eGraphics, _SkyboxMaterial.GetPipeline());
-
-	_CommandBuffers[_CurrentFrame].bindVertexBuffers(0, { _Cube._VertexBuffer.GetBuffer() }, { 0 });
-
-	_CommandBuffers[_CurrentFrame].bindDescriptorSets(
-		vk::PipelineBindPoint::eGraphics,
-		_SkyboxMaterial.GetPipelineLayout(),
-		1,
-		{
-			_Skybox.GetDescriptorSet(_CurrentFrame)
-		},
-		{ 1 * static_cast<uint32_t>(Object::dynamicAlignement) }
-	);
-
-	_CommandBuffers[_CurrentFrame].draw(_Cube._Vertices.size(), 1, 0, 0);
 
 	_CommandBuffers[_CurrentFrame].endRenderPass();
 	_CommandBuffers[_CurrentFrame].end();
@@ -578,50 +463,4 @@ void Renderer::CreateSemaphores()
 		_RenderFinishedSemaphore[i] = _Device().createSemaphore({});
 		_InFlightFences[i] = _Device().createFence({ vk::FenceCreateFlagBits::eSignaled });
 	}
-}
-
-void Renderer::LoadObj(const std::string &path)
-{
-	tinyobj::attrib_t attrib;
-	std::vector<tinyobj::shape_t> shapes;
-	std::vector<tinyobj::material_t> materials;
-
-	std::string err;
-	bool ret = tinyobj::LoadObj(&attrib, &shapes, &materials, &err, path.c_str(), "shaders/Sponza/");
-
-	for (size_t i = 0; i<shapes.size(); ++i) {
-		Mesh tempMesh(&_Device);
-		tempMesh.Load(shapes.at(i), attrib);
-		_SceneMeshes.push_back(tempMesh);
-
-		_SceneObjects.push_back(Object(&_Device, _SceneMeshes.back(), &_BasicMaterial, _SwapchainImageViews.size()));
-
-		// Add the diffuse texture if there are some provided
-		if (materials.at(shapes.at(i).mesh.material_ids.front()).ambient_texname != "") {
-			std::string path = "shaders/Sponza/" + materials.at(shapes.at(i).mesh.material_ids.front()).ambient_texname;
-
-			bool found = false;
-			for (auto &tex : _SceneTextures) {
-				if (tex.GetFilename() == path) {
-					_SceneObjects.back().AddTexture(1, tex);
-					found = true;
-					break;
-				}
-			}
-			if (!found) {
-				Texture tempTex(&_Device);
-				tempTex.Load(path, true);
-				_SceneTextures.push_back(tempTex);
-
-				_SceneObjects.back().AddTexture(1, _SceneTextures.back());
-				_SceneTextures.back().TransferBufferToImage(_CommandPool);
-			}
-		}
-		else {
-			_SceneObjects.back().AddTexture(1, _SceneTextures.front());
-		}
-
-		_SceneObjects.back().CreateDescriptorSet();
-	}
-
 }

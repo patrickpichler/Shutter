@@ -52,7 +52,6 @@ private:
 	void CreateInstance();
 	void CreateDevice();
 	void CreateSurface();
-	void PrepareDynamic();
 	void CreateSwapchain();
 	void CreateRenderPass();
 	void CreateFramebuffers();
@@ -62,8 +61,6 @@ private:
 	void CreateCommandBuffers();
 	void BuildCommandBuffers();
 	void CreateSemaphores();
-
-	void LoadObj(const std::string &path);
 private:
 	// Screen/window related
 	GLFWwindow *_Window;
@@ -99,17 +96,4 @@ private:
 
 	// Scene/Objects related
 	Scene *_Scene;
-
-	Mesh _Cube;
-	std::vector<Mesh> _SceneMeshes;
-
-	CubeTexture _SkyboxTexture;
-	std::vector<Texture> _SceneTextures;
-
-	Object _Skybox;
-	Object _Apple;
-	std::vector<Object> _SceneObjects;
-
-	Material _BasicMaterial;
-	Cubemap _SkyboxMaterial;
 };

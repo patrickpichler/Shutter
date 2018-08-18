@@ -1,9 +1,53 @@
 #include "Mesh.h"
 #include "Renderer/Helpers.h"
+#include <fstream>
 
 Mesh::Mesh(Device * device) : 
 	_Device(device)
 {
+}
+
+std::unordered_map<std::string, Mesh> Mesh::Load(Device *device, const std::string &filename, const std::string &root)
+{
+	//std::ofstream file(filename + ".txt");
+
+	std::unordered_map<std::string, Mesh> meshes;
+
+	tinyobj::attrib_t attrib;
+	std::vector<tinyobj::shape_t> shapes;
+	std::vector<tinyobj::material_t> materials;
+
+	std::string err;
+	bool ret = tinyobj::LoadObj(&attrib, &shapes, &materials, &err, filename.c_str(), (root + "models/").c_str());
+
+	for (size_t i = 0; i < shapes.size(); ++i) {
+		Mesh tempMesh(device);
+		tempMesh.Load(shapes.at(i), attrib);
+
+
+
+		//file << "  - name: " << shapes[i].name << "\n";
+		//file << "    model: " << shapes[i].name << "\n";
+		//file << "    material: basic\n";
+
+		//if (shapes.at(i).mesh.material_ids.front() < materials.size()) {
+		//	if (materials.at(shapes.at(i).mesh.material_ids.front()).ambient_texname != "") {
+		//		file << "    textures:\n";
+		//		file << "      - slot: 1\n";
+		//		std::string path = materials.at(shapes.at(i).mesh.material_ids.front()).ambient_texname;
+		//		file << "        texture: " << path << "\n";
+		//	}
+		//}
+		//file << "    position: [0.0,0.0,0.0]\n";
+		//file << "    rotation: [0.0,0.0,0.0]\n";
+		//file << "    scale: [0.1,0.1,0.1]\n";
+
+		meshes.insert(std::pair<std::string, Mesh>(shapes[i].name, tempMesh));
+	}
+
+	//file.close();
+
+	return meshes;
 }
 
 void Mesh::Load(const tinyobj::shape_t &shape, const tinyobj::attrib_t attrib)

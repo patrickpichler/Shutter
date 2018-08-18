@@ -1,5 +1,6 @@
 #pragma once
 #include <vector>
+#include <unordered_map>
 #include <memory>
 #include <vulkan/vulkan.hpp>
 #include <glm/glm.hpp>
@@ -8,27 +9,41 @@
 #include "Renderer/DeviceHandler.h"
 #include "Renderer/Buffer.h"
 
-#define NB_LIGHTS 1
+#include "Light.h"
+#include "Renderer/Material.h"
+#include "Renderer/Cubemap.h"
+#include "Engine/Mesh.h"
+#include "Object.h"
+#include "Texture.h"
+#include "CubeTexture.h"
 
-// Set to vec4 for alignment purposes
 struct SceneDataObject {
 	union alignas(256) Data{
-		struct CameraData {
-			glm::mat4 _View;
-			glm::mat4 _Projection;
-			glm::vec4 _Position;
-		} _CameraData;
-
-		struct LightData {
-			glm::vec4 _Position;
-			glm::vec4 _Colour;
-			glm::vec4 _Parameters;
-		} _LightData[2];
+		CameraUniformData _CameraData;
+		LightUniformData _LightData[2];
 	} _Data[2];
 };
 
 class Scene {
 public:
+	// Load a scene from a set of yaml files
+	void Load(const std::string &name, Device *device, const vk::CommandPool &cmdPool, const vk::RenderPass &renderPass);
+
+
+	std::vector<Light> _Lights;
+	std::unordered_map<std::string, Material> _Materials;
+	std::unordered_map<std::string, Cubemap> _Cubemaps;
+	std::unordered_map<std::string, Mesh> _Models;
+	std::unordered_map<std::string, std::vector<Object>> _Objects;
+	std::unordered_map<std::string, Texture> _Textures;
+
+	void CreateDynamic(Device *device);
+	uint32_t AddToDynamic(const Object &object);
+	void UploadDynamic();
+
+
+
+
 	void CreateDescriptorSets(Device *device, const uint32_t nbImages);
 	void Update(const uint32_t image);
 
@@ -45,10 +60,13 @@ private:
 	void CreateDescriptorSetLayout(const uint32_t nbImages);
 
 public:
-	Camera *_Camera;
+	Camera _Camera;
+	std::string _Name;
 
 private:
 	Device *_Device;
+
+	size_t dynamicIndex = 0;
 
 	vk::DescriptorPool _DescriptorPool;
 

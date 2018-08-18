@@ -3,6 +3,7 @@
 #include <glm/glm.hpp>
 #include <array>
 #include <vector>
+#include <unordered_map>
 #include "tiny_obj_loader.h"
 #include "Renderer/DeviceHandler.h"
 #include "Renderer/Buffer.h"
@@ -35,6 +36,7 @@ class Mesh {
 public:
 	Mesh(){}
 	Mesh(Device *device);
+	static std::unordered_map<std::string, Mesh> Load(Device  *device, const std::string &filename, const std::string &root);
 	void Load(const tinyobj::shape_t &shape, const tinyobj::attrib_t attrib);
 
 	void Clean();

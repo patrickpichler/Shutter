@@ -1,11 +1,11 @@
 #include "Camera.h"
 #include <glm/gtc/matrix_transform.hpp>
 
-Camera::Camera(const float fov, const uint16_t width, const uint16_t height, const glm::vec3 & position, const glm::vec3 direction, const glm::vec3 up) :
+Camera::Camera(const std::string &name, const float fov, const uint16_t width, const uint16_t height, const glm::vec3 & position, const glm::vec3 direction, const glm::vec3 up) :
+	SceneObject(name, position),
 	_FOV(fov),
 	_Width(width),
 	_Height(height),
-	_Position(position),
 	_Front(direction),
 	_Up(up)
 {
@@ -56,6 +56,16 @@ void Camera::Update(const double mouseX, const double mouseY, const Direction &d
 	_Position += movement;
 }
 
+CameraUniformData Camera::GetUniformData()
+{
+	CameraUniformData data;
+	data._Position = glm::vec4(_Position, 0.0);
+	data._Projection = GetProjection();
+	data._View = GetView();
+
+	return data;
+}
+
 glm::mat4 Camera::GetProjection() const
 {
 	glm::mat4 proj = glm::perspective(glm::radians(_FOV), float(_Width) / float(_Height), 0.1f, 100.0f);
@@ -66,5 +76,4 @@ glm::mat4 Camera::GetProjection() const
 glm::mat4 Camera::GetView() const
 {
 	return glm::lookAt(_Position, _Position + _Front, _Up);
-	//return glm::lookAt(_Position, glm::vec3(0,0,0), glm::vec3(0,0,1));
 }
