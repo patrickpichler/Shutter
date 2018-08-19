@@ -3,6 +3,7 @@
 #include "Renderer/Helpers.h"
 
 Object::Object(Device *device, const Mesh &mesh, Material *material, const uint32_t nbImages) :
+	SceneObject("object"),
 	_Device(device),
 	_Mesh(mesh),
 	_Material(material),

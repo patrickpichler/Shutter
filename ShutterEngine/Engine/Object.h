@@ -7,8 +7,9 @@
 #include "Mesh.h"
 #include "Texture.h"
 #include "Renderer/Material.h"
+#include "Engine/SceneObject.h"
 
-class Object {
+class Object : public SceneObject {
 public:
 	Object(){}
 	explicit Object(Device *device, const Mesh &mesh, Material *material, const uint32_t nbImages);
@@ -32,7 +33,6 @@ private:
 
 public:
 	Mesh _Mesh;
-	glm::vec3 _Position;
 	glm::vec3 _Rotation;
 	glm::vec3 _Scale;
 	uint32_t _DynamicIndex;
