@@ -10,3 +10,6 @@
 [submodule "ShutterEngine/Ext/yaml-cpp"]
 	path = ShutterEngine/Ext/yaml-cpp
 	url = https://github.com/jbeder/yaml-cpp.git
+[submodule "ShutterEngine/Ext/imgui"]
+	path = ShutterEngine/Ext/imgui
+	url = https://github.com/ocornut/imgui.git

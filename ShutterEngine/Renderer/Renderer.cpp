@@ -27,10 +27,12 @@ void Renderer::Init(GLFWwindow* window, const uint16_t width, const uint16_t hei
 
 
 	CreateRenderPass();
+
+
+	_GUI.Init(&_Device, _Window, _Surface, _ScreenSize, _Instance, _Swapchain, _CommandPool);
 	CreateFramebuffers();
 
-
-	_Scene->Load("sponza", &_Device, _CommandPool, _RenderPass);
+	_Scene->Load("apple", &_Device, _CommandPool, _RenderPass);
 
 	CreateCommandBuffers();
 	CreateSemaphores();
@@ -55,12 +57,14 @@ void Renderer::Draw()
 				&vk::PipelineStageFlags(vk::PipelineStageFlagBits::eColorAttachmentOutput),
 				1,
 				&_CommandBuffers[_CurrentFrame],
-				1,
-				&_RenderFinishedSemaphore[_CurrentFrame]
+				0,
+				nullptr
 			)
 		},
-		_InFlightFences[_CurrentFrame]
+		_OffscreenFences[_CurrentFrame]
 	);
+
+	_GUI.Render(_CurrentFrame, _FramebuffersPresent, _OffscreenFences, _InFlightFences, _RenderFinishedSemaphore);
 	_Device.GetQueue(E_QUEUE_TYPE::PRESENT).VulkanQueue.presentKHR(vk::PresentInfoKHR(
 		1,
 		&_RenderFinishedSemaphore[_CurrentFrame],
@@ -328,24 +332,48 @@ void Renderer::CreateRenderPass()
 
 void Renderer::CreateFramebuffers()
 {
-	_Framebuffers.resize(_SwapchainImageViews.size());
+	// Framebuffer used in offscreen to render to scene
+	{
+		_Framebuffers.resize(_SwapchainImageViews.size());
 
-	for (size_t i = 0; i < _SwapchainImageViews.size(); ++i) {
-		std::array<vk::ImageView,3> attachments = {
-			_ImageResolve[i].GetImageView(),
-			_DepthImage.GetImageView(),
-			_SwapchainImageViews[i].GetImageView()
-		};
-		
-		_Framebuffers[i] = _Device().createFramebuffer(vk::FramebufferCreateInfo(
-			{},
-			_RenderPass,
-			attachments.size(),
-			attachments.data(),
-			_ScreenSize.width,
-			_ScreenSize.height,
-			1
-		));
+		for (size_t i = 0; i < _SwapchainImageViews.size(); ++i) {
+			std::array<vk::ImageView, 3> attachments = {
+				_ImageColor[i].GetImageView(),
+				_DepthImage.GetImageView(),
+				_SwapchainImageViews[i].GetImageView()
+			};
+
+			_Framebuffers[i] = _Device().createFramebuffer(vk::FramebufferCreateInfo(
+				{},
+				_RenderPass,
+				attachments.size(),
+				attachments.data(),
+				_ScreenSize.width,
+				_ScreenSize.height,
+				1
+			));
+		}
+	}
+
+	// Framebuffer used for rendering the UI
+	{
+		_FramebuffersPresent.resize(_SwapchainImageViews.size());
+
+		for (size_t i = 0; i < _SwapchainImageViews.size(); ++i) {
+			std::array<vk::ImageView, 1> attachments = {
+				_SwapchainImageViews[i].GetImageView()
+			};
+
+			_FramebuffersPresent[i] = _Device().createFramebuffer(vk::FramebufferCreateInfo(
+				{},
+				_GUI._RenderPass,
+				attachments.size(),
+				attachments.data(),
+				_ScreenSize.width,
+				_ScreenSize.height,
+				1
+			));
+		}
 	}
 }
 
@@ -371,19 +399,22 @@ void Renderer::CreateResolve()
 {
 	vk::Format colorFormat = vk::Format::eR8G8B8A8Unorm;
 
-	_ImageResolve.resize(_SwapchainImageViews.size());
+	// Main color image
+	{
+		_ImageColor.resize(_SwapchainImageViews.size());
 
-	for (size_t i = 0; i < _SwapchainImageViews.size(); i++) {
-		_ImageResolve.at(i) = Image(
-			&_Device,
-			VkExtent3D{ _ScreenSize.width, _ScreenSize.height, 1 },
-			1,
-			colorFormat,
-			vk::ImageUsageFlagBits::eTransientAttachment | vk::ImageUsageFlagBits::eColorAttachment,
-			false,
-			vk::SampleCountFlagBits::e4
-		);
-		_ImageResolve.at(i).TransitionLayout(_CommandPool, vk::ImageLayout::eUndefined, vk::ImageLayout::eColorAttachmentOptimal);
+		for (size_t i = 0; i < _SwapchainImageViews.size(); i++) {
+			_ImageColor.at(i) = Image(
+				&_Device,
+				VkExtent3D{ _ScreenSize.width, _ScreenSize.height, 1 },
+				1,
+				colorFormat,
+				vk::ImageUsageFlagBits::eTransientAttachment | vk::ImageUsageFlagBits::eColorAttachment,
+				false,
+				vk::SampleCountFlagBits::e4
+			);
+			_ImageColor.at(i).TransitionLayout(_CommandPool, vk::ImageLayout::eUndefined, vk::ImageLayout::eColorAttachmentOptimal);
+		}
 	}
 }
 
@@ -452,6 +483,7 @@ void Renderer::CreateSemaphores()
 	_ImageAvailableSemaphore.resize(2);
 	_RenderFinishedSemaphore.resize(2);
 	_InFlightFences.resize(2);
+	_OffscreenFences.resize(2);
 
 	VkSemaphoreCreateInfo semaphoreInfo = { VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
 	VkFenceCreateInfo fenceInfo = { VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
@@ -462,5 +494,6 @@ void Renderer::CreateSemaphores()
 		_ImageAvailableSemaphore[i] = _Device().createSemaphore({});
 		_RenderFinishedSemaphore[i] = _Device().createSemaphore({});
 		_InFlightFences[i] = _Device().createFence({ vk::FenceCreateFlagBits::eSignaled });
+		_OffscreenFences[i] = _Device().createFence({ vk::FenceCreateFlagBits::eSignaled });
 	}
 }
