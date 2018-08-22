@@ -1,5 +1,6 @@
 #include "GUI.h"
 #include "Helpers.h"
+#include "Engine/Object.h"
 
 void GUI::Init(Device *device, GLFWwindow *window, const vk::SurfaceKHR & surface, const vk::Extent2D & screenSize, const vk::Instance & instance, vk::SwapchainKHR &swapchain, const vk::CommandPool &cmdPool)
 {
@@ -39,7 +40,7 @@ void GUI::Init(Device *device, GLFWwindow *window, const vk::SurfaceKHR & surfac
 	}
 }
 
-void GUI::Render(const size_t frameId, const std::vector<vk::Framebuffer> &fb, std::vector<vk::Fence> &fence, std::vector<vk::Fence> &frameFence, std::vector<vk::Semaphore> &semaphore)
+void GUI::Render(const size_t frameId, const std::vector<vk::Framebuffer> &fb, std::vector<vk::Fence> &fence, std::vector<vk::Fence> &frameFence, std::vector<vk::Semaphore> &semaphore, Scene *scene)
 {
 
 	_Device->GetDevice().waitForFences(fence[frameId], VK_TRUE, std::numeric_limits<uint64_t>::max());
@@ -50,10 +51,35 @@ void GUI::Render(const size_t frameId, const std::vector<vk::Framebuffer> &fb, s
 	ImGui::NewFrame();
 
 	bool show_demo_window = true;
+	bool show_another_window = true;
 
-
+	ImGui::SetNextWindowBgAlpha(0.3f);
 	if (show_demo_window) {
 		ImGui::ShowDemoWindow(&show_demo_window);
+	}
+
+	if (show_another_window)
+	{
+		Object *obj = &scene->_Objects.at("basic")[selectIndex];
+
+		ImGui::Begin(std::string("Properties: " + obj->_Name).c_str(), &show_another_window);
+
+		if (ImGui::BeginCombo("Object selector: ", obj->_Name.c_str()))
+		{
+			int i = 0;
+			for (const auto &objs : scene->_Objects.at("basic")) {
+				if (ImGui::Selectable(objs._Name.c_str(), objs._Name == obj->_Name)) {
+					selectIndex = i;
+				}
+				i++;
+			}
+			ImGui::EndCombo();
+		}
+
+		ImGui::DragFloat3("Position", &obj->_Position[0], 0.1f);
+		ImGui::DragFloat3("Rotation", &obj->_Rotation[0], 0.1f);
+		ImGui::DragFloat3("Scale", &obj->_Scale[0], 0.1f);
+		ImGui::End();
 	}
 
 

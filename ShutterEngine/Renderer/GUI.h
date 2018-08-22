@@ -3,6 +3,7 @@
 #include "examples/imgui_impl_vulkan.h"
 #include <vulkan/vulkan.hpp>
 #include "DeviceHandler.h"
+#include "Engine/Scene.h"
 
 
 class GUI {
@@ -17,7 +18,7 @@ public:
 		const vk::CommandPool &cmdPool
 	);
 
-	void Render(const size_t frameId, const std::vector<vk::Framebuffer> &fb, std::vector<vk::Fence> &fence, std::vector<vk::Fence> &frameFence, std::vector<vk::Semaphore> &semaphore);
+	void Render(const size_t frameId, const std::vector<vk::Framebuffer> &fb, std::vector<vk::Fence> &fence, std::vector<vk::Fence> &frameFence, std::vector<vk::Semaphore> &semaphore, Scene *scene);
 	vk::RenderPass _RenderPass;
 private:
 	void CreateRenderPass();
@@ -28,5 +29,7 @@ private:
 	std::vector<vk::CommandBuffer> _CommandBuffers;
 
 	vk::DescriptorPool _DescriptorPool;
+
+	int selectIndex = 0;
 
 };

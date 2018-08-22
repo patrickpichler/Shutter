@@ -32,7 +32,7 @@ void Renderer::Init(GLFWwindow* window, const uint16_t width, const uint16_t hei
 	_GUI.Init(&_Device, _Window, _Surface, _ScreenSize, _Instance, _Swapchain, _CommandPool);
 	CreateFramebuffers();
 
-	_Scene->Load("apple", &_Device, _CommandPool, _RenderPass);
+	_Scene->Load("sponza", &_Device, _CommandPool, _RenderPass);
 
 	CreateCommandBuffers();
 	CreateSemaphores();
@@ -64,7 +64,7 @@ void Renderer::Draw()
 		_OffscreenFences[_CurrentFrame]
 	);
 
-	_GUI.Render(_CurrentFrame, _FramebuffersPresent, _OffscreenFences, _InFlightFences, _RenderFinishedSemaphore);
+	_GUI.Render(_CurrentFrame, _FramebuffersPresent, _OffscreenFences, _InFlightFences, _RenderFinishedSemaphore, _Scene);
 	_Device.GetQueue(E_QUEUE_TYPE::PRESENT).VulkanQueue.presentKHR(vk::PresentInfoKHR(
 		1,
 		&_RenderFinishedSemaphore[_CurrentFrame],

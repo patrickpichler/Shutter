@@ -130,6 +130,7 @@ void Scene::Load(const std::string &name, Device *device, const vk::CommandPool 
 	//_Objects.resize(scene["scene"].size());
 	for (int i = 0; i < scene["scene"].size(); ++i) {
 		std::string model = scene["scene"][i]["model"].as<std::string>();
+		std::string name = scene["scene"][i]["name"].as<std::string>();
 
 		std::string material = scene["scene"][i]["material"].as<std::string>();
 		Material *materialM = &_Materials.at(material);
@@ -152,6 +153,7 @@ void Scene::Load(const std::string &name, Device *device, const vk::CommandPool 
 
 		_Objects[material].back()._DynamicIndex = AddToDynamic(_Objects[material].back());
 		_Objects[material].back().CreateDescriptorSet();
+		_Objects[material].back()._Name = name;
 	}
 
 	UploadDynamic();
@@ -250,6 +252,15 @@ void Scene::Update(const uint32_t image)
 	_SceneDataObjects.at(image)._Data[1]._LightData[1] = _Lights[1].GetUniformData();
 
 	_SceneDataBuffers.at(image).Copy(&_SceneDataObjects.at(image)._Data, sizeof(SceneDataObject::Data) * 2);
+
+	for (auto &mat : _Objects) {
+		for (auto &obj : mat.second) {
+			glm::mat4* modelPtr = (glm::mat4*)(((uint64_t)Object::uboDynamic.model + (obj._DynamicIndex * Object::dynamicAlignement)));
+			*modelPtr = obj.GetModelMatrix();
+		}
+	}
+
+	UploadDynamic();
 }
 
 void Scene::CreateDescriptorSetLayout(const uint32_t nbImages)
