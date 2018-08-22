@@ -18,7 +18,10 @@ public:
 	void TriggerShaderReload();
 
 	static void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
+	static void MouseCallback(GLFWwindow* window, int button, int action, int mods);
 
+
+	bool broadcastCursor = true;
 private:
 	void DrawFrame();
 

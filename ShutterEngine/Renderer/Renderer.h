@@ -34,6 +34,7 @@
 #include "Engine/CubeTexture.h"
 
 #include "vulkan/vulkan.hpp"
+#include "GUI.h"
 
 class Renderer {
 public:
@@ -77,10 +78,11 @@ private:
 
 	vk::SwapchainKHR _Swapchain;
 	std::vector<Image> _SwapchainImageViews;
-	std::vector<Image> _ImageResolve;
+	std::vector<Image> _ImageColor;
 	Image _DepthImage;
 
 	std::vector<vk::Framebuffer> _Framebuffers;
+	std::vector<vk::Framebuffer> _FramebuffersPresent;
 
 	vk::RenderPass _RenderPass;
 
@@ -93,7 +95,10 @@ private:
 	std::vector<vk::Semaphore> _ImageAvailableSemaphore;
 	std::vector<vk::Semaphore> _RenderFinishedSemaphore;
 	std::vector<vk::Fence> _InFlightFences;
+	std::vector<vk::Fence> _OffscreenFences;
 
 	// Scene/Objects related
 	Scene *_Scene;
+
+	GUI _GUI;
 };
