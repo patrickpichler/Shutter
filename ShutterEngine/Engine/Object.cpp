@@ -46,23 +46,27 @@ void Object::CreateDescriptorSet()
 			nullptr
 		));
 
+		std::vector<vk::DescriptorImageInfo> textureDescriptors;
+		textureDescriptors.resize(_Textures.size());
+
 		size_t j = 0;
 		for (const auto &texture : _Textures) {
+			textureDescriptors.at(j) = vk::DescriptorImageInfo(
+				texture.second.GetSampler(),
+				texture.second.GetImage().GetImageView(),
+				vk::ImageLayout::eShaderReadOnlyOptimal
+			);
 			descriptorWrites.push_back(vk::WriteDescriptorSet(
 				descSet,
 				texture.first,
 				0,
 				1,
 				vk::DescriptorType::eCombinedImageSampler,
-				&vk::DescriptorImageInfo(
-					texture.second.GetSampler(),
-					texture.second.GetImage().GetImageView(),
-					vk::ImageLayout::eShaderReadOnlyOptimal
-				),
+				&textureDescriptors.at(j),
 				nullptr,
 				nullptr
 			));
-			j++;
+			++j;
 		}
 
 		_Device->GetDevice().updateDescriptorSets(descriptorWrites, {});

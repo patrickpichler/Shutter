@@ -27,12 +27,13 @@ void Renderer::Init(GLFWwindow* window, const uint16_t width, const uint16_t hei
 
 
 	CreateRenderPass();
+	CreateShadowRenderPass();
 
 
 	_GUI.Init(&_Device, _Window, _Surface, _ScreenSize, _Instance, _Swapchain, _CommandPool);
 	CreateFramebuffers();
 
-	_Scene->Load("sponza", &_Device, _CommandPool, _RenderPass);
+	_Scene->Load("sponza", &_Device, _CommandPool, _RenderPass, _ShadowRenderPass, _ShadowTexture);
 
 	CreateCommandBuffers();
 	CreateSemaphores();
@@ -47,13 +48,37 @@ void Renderer::Draw()
 
 	_Scene->Update(_CurrentFrame);
 
-	BuildCommandBuffers();
+	BuildShadowCommandBuffers();
 
 	_Device.GetQueue(E_QUEUE_TYPE::GRAPHICS).VulkanQueue.submit(
 		{
 			vk::SubmitInfo(
 				1,
 				&_ImageAvailableSemaphore[_CurrentFrame],
+				&vk::PipelineStageFlags(vk::PipelineStageFlagBits::eFragmentShader),
+				1,
+				&_ShadowCommandBuffers[_CurrentFrame],
+				0,
+				nullptr
+			)
+		},
+		_ShadowFences[_CurrentFrame]
+	);
+
+
+	_Device().waitForFences(_ShadowFences[_CurrentFrame], VK_TRUE, std::numeric_limits<uint64_t>::max());
+	_Device().resetFences(_ShadowFences[_CurrentFrame]);
+
+	_Scene->Update(_CurrentFrame);
+
+
+	BuildCommandBuffers();
+
+	_Device.GetQueue(E_QUEUE_TYPE::GRAPHICS).VulkanQueue.submit(
+		{
+			vk::SubmitInfo(
+				0,
+				nullptr,
 				&vk::PipelineStageFlags(vk::PipelineStageFlagBits::eColorAttachmentOutput),
 				1,
 				&_CommandBuffers[_CurrentFrame],
@@ -122,27 +147,7 @@ void Renderer::WaitIdle()
 
 void Renderer::ReloadShaders()
 {
-	//// Reload the basic Material
-	//std::vector<Shader> shaders =  _BasicMaterial.GetShaderList();
-	//_BasicMaterial.ClearShaders();
-
-	//for (auto &shader : shaders) {
-	//	Shader newShader(&_Device, shader._Name, shader._Filename, shader._Stage, shader._EntryPoint);
-	//	shader.Clean();
-	//	_BasicMaterial.BindShader(newShader);
-	//}
-	//_BasicMaterial.ReloadPipeline(_RenderPass, _ScreenSize.width, _ScreenSize.height);
-
-	//// Reload the skybox Material
-	//shaders = _SkyboxMaterial.GetShaderList();
-	//_SkyboxMaterial.ClearShaders();
-
-	//for (auto &shader : shaders) {
-	//	Shader newShader(&_Device, shader._Name, shader._Filename, shader._Stage, shader._EntryPoint);
-	//	shader.Clean();
-	//	_SkyboxMaterial.BindShader(newShader);
-	//}
-	//_SkyboxMaterial.ReloadPipeline(_RenderPass, _ScreenSize.width, _ScreenSize.height);
+	_Scene->ReloadShader(_RenderPass, _ScreenSize);
 }
 
 void Renderer::CreateInstance()
@@ -330,8 +335,83 @@ void Renderer::CreateRenderPass()
 	));
 }
 
+void Renderer::CreateShadowRenderPass()
+{
+	// Depth Image
+	vk::AttachmentDescription depthAttachement(
+		{},
+		_ShadowImage.GetFormat(),
+		vk::SampleCountFlagBits::e1,
+		vk::AttachmentLoadOp::eClear,
+		vk::AttachmentStoreOp::eStore,
+		vk::AttachmentLoadOp::eDontCare,
+		vk::AttachmentStoreOp::eDontCare,
+		vk::ImageLayout::eUndefined,
+		vk::ImageLayout::eDepthStencilAttachmentOptimal
+	);
+
+	vk::AttachmentReference depthAttachementReference(
+		0,
+		vk::ImageLayout::eDepthStencilAttachmentOptimal
+	);
+
+	vk::SubpassDescription subpass(
+		{},
+		vk::PipelineBindPoint::eGraphics,
+		0,
+		{},
+		0,
+		nullptr,
+		nullptr,
+		&depthAttachementReference
+	);
+
+	std::array<vk::AttachmentDescription, 1> attachements{
+		depthAttachement
+	};
+
+
+	_ShadowRenderPass = _Device().createRenderPass(vk::RenderPassCreateInfo(
+		{},
+		attachements.size(),
+		attachements.data(),
+		1,
+		&subpass,
+		1,
+		&vk::SubpassDependency(
+			VK_SUBPASS_EXTERNAL,
+			0,
+			vk::PipelineStageFlagBits::eColorAttachmentOutput,
+			vk::PipelineStageFlagBits::eColorAttachmentOutput,
+			{},
+			vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite
+		)
+	));
+}
+
 void Renderer::CreateFramebuffers()
 {
+	// Framebuffer used in shadow rendering
+	{
+		_ShadowFramebuffer.resize(_SwapchainImageViews.size());
+
+		for (size_t i = 0; i < _SwapchainImageViews.size(); ++i) {
+			std::array<vk::ImageView, 1> attachments = {
+				_ShadowImage.GetImageView(),
+			};
+
+			_ShadowFramebuffer[i] = _Device().createFramebuffer(vk::FramebufferCreateInfo(
+				{},
+				_ShadowRenderPass,
+				attachments.size(),
+				attachments.data(),
+				_ScreenSize.width,
+				_ScreenSize.height,
+				1
+			));
+		}
+	}
+
 	// Framebuffer used in offscreen to render to scene
 	{
 		_Framebuffers.resize(_SwapchainImageViews.size());
@@ -393,6 +473,20 @@ void Renderer::CreateDepth()
 		false,
 		vk::SampleCountFlagBits::e4
 	);
+
+	_ShadowImage = Image(
+		&_Device,
+		VkExtent3D{ _ScreenSize.width, _ScreenSize.height, 1 },
+		1,
+		vk::Format::eD32Sfloat,
+		vk::ImageUsageFlagBits::eDepthStencilAttachment | vk::ImageUsageFlagBits::eSampled,
+		false,
+		vk::SampleCountFlagBits::e1
+	);
+
+	_ShadowTexture = Texture(&_Device);
+	_ShadowTexture._Image = _ShadowImage;
+	_ShadowTexture.CreateSampler();
 }
 
 void Renderer::CreateResolve()
@@ -421,6 +515,58 @@ void Renderer::CreateResolve()
 void Renderer::CreateCommandBuffers()
 {
 	_CommandBuffers = _Device().allocateCommandBuffers(vk::CommandBufferAllocateInfo(_CommandPool, vk::CommandBufferLevel::ePrimary, _Framebuffers.size()));
+	_ShadowCommandBuffers = _Device().allocateCommandBuffers(vk::CommandBufferAllocateInfo(_CommandPool, vk::CommandBufferLevel::ePrimary, _Framebuffers.size()));
+}
+
+void Renderer::BuildShadowCommandBuffers()
+{
+	_ShadowCommandBuffers[_CurrentFrame].begin({ vk::CommandBufferUsageFlagBits::eSimultaneousUse });
+
+	std::array<vk::ClearValue, 1> clearValues;
+	clearValues[0] = vk::ClearDepthStencilValue(1.0f, 0);
+
+	_ShadowCommandBuffers[_CurrentFrame].beginRenderPass(
+		vk::RenderPassBeginInfo(
+			_ShadowRenderPass,
+			_ShadowFramebuffer[_CurrentFrame],
+			{ {0, 0}, _ScreenSize },
+			clearValues.size(),
+			clearValues.data()
+		),
+		vk::SubpassContents::eInline
+	);
+
+	_ShadowCommandBuffers[_CurrentFrame].bindDescriptorSets(
+		vk::PipelineBindPoint::eGraphics,
+		_Scene->_Materials.at("shadow").GetPipelineLayout(),
+		0,
+		{
+			_Scene->GetDescriptorSet(_CurrentFrame)
+		},
+		{}
+	);
+	_ShadowCommandBuffers[_CurrentFrame].bindPipeline(vk::PipelineBindPoint::eGraphics, _Scene->_Materials.at("shadow").GetPipeline());
+
+
+	for (const auto &object : _Scene->_Objects["basic"]) {
+		_ShadowCommandBuffers[_CurrentFrame].bindVertexBuffers(0, { object._Mesh._VertexBuffer.GetBuffer() }, { 0 });
+
+		_ShadowCommandBuffers[_CurrentFrame].bindDescriptorSets(
+			vk::PipelineBindPoint::eGraphics,
+			_Scene->_Materials.at("shadow").GetPipelineLayout(),
+			0,
+			{
+				_Scene->GetDescriptorSet(_CurrentFrame),
+				object.GetDescriptorSet(_CurrentFrame)
+			},
+			{ object._DynamicIndex * static_cast<uint32_t>(Object::dynamicAlignement) }
+		);
+
+		_ShadowCommandBuffers[_CurrentFrame].draw(object._Mesh._Vertices.size(), 1, 0, 0);
+	}
+
+	_ShadowCommandBuffers[_CurrentFrame].endRenderPass();
+	_ShadowCommandBuffers[_CurrentFrame].end();
 }
 
 void Renderer::BuildCommandBuffers()
@@ -484,6 +630,7 @@ void Renderer::CreateSemaphores()
 	_RenderFinishedSemaphore.resize(2);
 	_InFlightFences.resize(2);
 	_OffscreenFences.resize(2);
+	_ShadowFences.resize(2);
 
 	VkSemaphoreCreateInfo semaphoreInfo = { VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
 	VkFenceCreateInfo fenceInfo = { VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
@@ -495,5 +642,6 @@ void Renderer::CreateSemaphores()
 		_RenderFinishedSemaphore[i] = _Device().createSemaphore({});
 		_InFlightFences[i] = _Device().createFence({ vk::FenceCreateFlagBits::eSignaled });
 		_OffscreenFences[i] = _Device().createFence({ vk::FenceCreateFlagBits::eSignaled });
+		_ShadowFences[i] = _Device().createFence({ vk::FenceCreateFlagBits::eSignaled });
 	}
 }

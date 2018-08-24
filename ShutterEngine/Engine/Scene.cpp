@@ -25,7 +25,7 @@ namespace YAML {
 	};
 }
 
-void Scene::Load(const std::string &name, Device *device, const vk::CommandPool &cmdPool, const vk::RenderPass &renderPass) {
+void Scene::Load(const std::string &name, Device *device, const vk::CommandPool &cmdPool, const vk::RenderPass &renderPass, const vk::RenderPass &shadowPass, const Texture &shadow) {
 	CreateDynamic(device);
 	std::string root = "Data/" + name + "/";
 
@@ -54,6 +54,9 @@ void Scene::Load(const std::string &name, Device *device, const vk::CommandPool 
 		_Camera = Camera(name, fov, 1024, 768, position, glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 1.0));
 	}
 
+	// Create the camera for the light source
+	_ShadowCamera = Camera(name, 45, 1024, 768, glm::vec3(10, 0, 35), glm::vec3(-10, 0, -35), glm::vec3(0.0, 0.0, 1.0));
+
 	// Load the materials
 	for (int i = 0; i < config["materials"].size(); ++i) {
 		// Load the shaders
@@ -81,6 +84,14 @@ void Scene::Load(const std::string &name, Device *device, const vk::CommandPool 
 			mat.BindShader(vert);
 			mat.BindShader(frag);
 			mat.CreatePipeline(renderPass);
+			_Materials.insert(std::pair<std::string, Material>(name, mat));
+		}
+		else if (pipeline == "shadow") {
+			// Create the material
+			Shadow mat(device, this, 1024, 768, 1024);
+			mat.BindShader(vert);
+			mat.BindShader(frag);
+			mat.CreatePipeline(shadowPass);
 			_Materials.insert(std::pair<std::string, Material>(name, mat));
 		}
 		_Objects.insert(std::pair<std::string, std::vector<Object>>(name, std::vector<Object>()));
@@ -151,6 +162,10 @@ void Scene::Load(const std::string &name, Device *device, const vk::CommandPool 
 			_Objects[material].back().AddTexture(slot, texture);
 		}
 
+		if (material == "basic") {
+			_Objects[material].back().AddTexture(2, shadow);
+		}
+
 		_Objects[material].back()._DynamicIndex = AddToDynamic(_Objects[material].back());
 		_Objects[material].back().CreateDescriptorSet();
 		_Objects[material].back()._Name = name;
@@ -190,6 +205,20 @@ void Scene::UploadDynamic()
 	Object::DynamicBuffer.Copy(Object::uboDynamic.model, bufferSize);
 }
 
+void Scene::ReloadShader(const vk::RenderPass &renderPass, const vk::Extent2D &screenSize)
+{
+	// Reload the basic Material
+	std::vector<Shader> shaders =  _Materials.at("basic").GetShaderList();
+	_Materials.at("basic").ClearShaders();
+
+	for (auto &shader : shaders) {
+		Shader newShader(_Device, shader._Name, shader._Filename, shader._Stage, shader._EntryPoint);
+		shader.Clean();
+		_Materials.at("basic").BindShader(newShader);
+	}
+	_Materials.at("basic").ReloadPipeline(renderPass, screenSize.width, screenSize.height);
+}
+
 void Scene::CreateDescriptorSets(Device *device, const uint32_t nbImages)
 {
 	_Device = device;
@@ -210,7 +239,7 @@ void Scene::CreateDescriptorSets(Device *device, const uint32_t nbImages)
 
 	for (size_t i = 0; i < nbImages; ++i)
 	{
-		_SceneDataBuffers.at(i) = Buffer(_Device, vk::BufferUsageFlagBits::eUniformBuffer, sizeof(SceneDataObject::Data) * 2);
+		_SceneDataBuffers.at(i) = Buffer(_Device, vk::BufferUsageFlagBits::eUniformBuffer, sizeof(SceneDataObject::Data) * 3);
 
 		vk::WriteDescriptorSet cameraDescriptor(
 			_SceneDescriptorSets.at(i),
@@ -225,21 +254,34 @@ void Scene::CreateDescriptorSets(Device *device, const uint32_t nbImages)
 			nullptr
 		);
 
+		vk::WriteDescriptorSet shadowCameraDescriptor(
+			_SceneDescriptorSets.at(i),
+			1, 0, 1,
+			vk::DescriptorType::eUniformBuffer,
+			nullptr,
+			&vk::DescriptorBufferInfo(
+				_SceneDataBuffers[i].GetBuffer(),
+				alignof(SceneDataObject::Data),
+				sizeof(CameraUniformData)
+			),
+			nullptr
+		);
+
 		vk::DescriptorBufferInfo lightInfo = {
 			_SceneDataBuffers.at(i).GetBuffer(),
-			alignof(SceneDataObject::Data),
+			alignof(SceneDataObject::Data) * 2,
 			sizeof(LightUniformData)
 		};
 
 		vk::WriteDescriptorSet lightDescriptor(
 			_SceneDescriptorSets.at(i),
-			1, 0, 1,
+			2, 0, 1,
 			vk::DescriptorType::eUniformBuffer,
 			nullptr,
 			&lightInfo
 		);
 
-		_Device->GetDevice().updateDescriptorSets({ cameraDescriptor, lightDescriptor }, nullptr);
+		_Device->GetDevice().updateDescriptorSets({ cameraDescriptor, shadowCameraDescriptor, lightDescriptor }, nullptr);
 	}
 }
 
@@ -247,11 +289,12 @@ void Scene::Update(const uint32_t image)
 {
 	// Prepare the camera
 	_SceneDataObjects.at(image)._Data[0]._CameraData = _Camera.GetUniformData();
+	_SceneDataObjects.at(image)._Data[1]._CameraData = _ShadowCamera.GetUniformData();
 
-	_SceneDataObjects.at(image)._Data[1]._LightData[0] = _Lights[0].GetUniformData();
-	_SceneDataObjects.at(image)._Data[1]._LightData[1] = _Lights[1].GetUniformData();
+	_SceneDataObjects.at(image)._Data[2]._LightData[0] = _Lights[0].GetUniformData();
+	_SceneDataObjects.at(image)._Data[2]._LightData[1] = _Lights[1].GetUniformData();
 
-	_SceneDataBuffers.at(image).Copy(&_SceneDataObjects.at(image)._Data, sizeof(SceneDataObject::Data) * 2);
+	_SceneDataBuffers.at(image).Copy(&_SceneDataObjects.at(image)._Data, sizeof(SceneDataObject::Data) * 3);
 
 	for (auto &mat : _Objects) {
 		for (auto &obj : mat.second) {
@@ -266,9 +309,10 @@ void Scene::Update(const uint32_t image)
 void Scene::CreateDescriptorSetLayout(const uint32_t nbImages)
 {
 	vk::DescriptorSetLayoutBinding cameraInfo(0, vk::DescriptorType::eUniformBuffer, 1,  vk::ShaderStageFlagBits::eVertex);
-	vk::DescriptorSetLayoutBinding lightInfo(1, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eFragment);
+	vk::DescriptorSetLayoutBinding shadowCameraInfo(1, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eVertex);
+	vk::DescriptorSetLayoutBinding lightInfo(2, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eFragment);
 
-	std::vector<vk::DescriptorSetLayoutBinding> bindings{ cameraInfo , lightInfo };
+	std::vector<vk::DescriptorSetLayoutBinding> bindings{ cameraInfo, shadowCameraInfo, lightInfo };
 
 
 	_DescriptorSetLayout = _Device->GetDevice().createDescriptorSetLayout(

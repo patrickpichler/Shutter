@@ -29,13 +29,13 @@ public:
 		return _Filename;
 	}
 
-protected:
+//protected:
+	Image _Image;
 	void CreateSampler();
 
-protected:
+//protected:
 	Device *_Device;
-
-	Image _Image;
+//public:
 
 	vk::Sampler _Sampler;
 

@@ -56,13 +56,13 @@ protected:
 	virtual void CreateRasterizationInfo();
 	vk::PipelineRasterizationStateCreateInfo _RasterizationInfo;
 
-	void CreateMultisampleInfo();
+	virtual void CreateMultisampleInfo();
 	vk::PipelineMultisampleStateCreateInfo _MultisampleInfo;
 
-	void CreateDepthStencilInfo();
+	virtual void CreateDepthStencilInfo();
 	vk::PipelineDepthStencilStateCreateInfo _DepthStencilInfo;
 
-	void CreateColorBlendInfo();
+	virtual void CreateColorBlendInfo();
 	vk::PipelineColorBlendAttachmentState _ColorBlendAttachement;
 	vk::PipelineColorBlendStateCreateInfo _ColorBlendInfo;
 

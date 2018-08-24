@@ -16,18 +16,20 @@
 #include "Object.h"
 #include "Texture.h"
 #include "CubeTexture.h"
+#include "Renderer/Shadow.h"
 
 struct SceneDataObject {
 	union alignas(256) Data{
 		CameraUniformData _CameraData;
+		CameraUniformData _ShadowCameraData;
 		LightUniformData _LightData[2];
-	} _Data[2];
+	} _Data[3];
 };
 
 class Scene {
 public:
 	// Load a scene from a set of yaml files
-	void Load(const std::string &name, Device *device, const vk::CommandPool &cmdPool, const vk::RenderPass &renderPass);
+	void Load(const std::string &name, Device *device, const vk::CommandPool &cmdPool, const vk::RenderPass &renderPass, const vk::RenderPass &shadowPass, const Texture &shadow);
 
 
 	std::vector<Light> _Lights;
@@ -41,6 +43,7 @@ public:
 	uint32_t AddToDynamic(const Object &object);
 	void UploadDynamic();
 
+	void ReloadShader(const vk::RenderPass &renderPass, const vk::Extent2D &screenSize);
 
 
 
@@ -61,6 +64,7 @@ private:
 
 public:
 	Camera _Camera;
+	Camera _ShadowCamera;
 	std::string _Name;
 
 private:
