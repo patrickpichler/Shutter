@@ -2,8 +2,10 @@
 #include "examples/imgui_impl_glfw.h"
 #include "examples/imgui_impl_vulkan.h"
 #include <vulkan/vulkan.hpp>
-#include "DeviceHandler.h"
+#include "Renderer/DeviceHandler.h"
 #include "Engine/Scene.h"
+
+#include "Widgets.h"
 
 
 class GUI {
@@ -20,6 +22,11 @@ public:
 
 	void Render(const size_t frameId, const std::vector<vk::Framebuffer> &fb, std::vector<vk::Fence> &fence, std::vector<vk::Fence> &frameFence, std::vector<vk::Semaphore> &semaphore, Scene *scene);
 	vk::RenderPass _RenderPass;
+
+	PerformanceWidget perf;
+	SceneTreeWidget tree;
+	ControlsWidget controls;
+
 private:
 	void CreateRenderPass();
 	void CreateDescriptorPool();

@@ -34,6 +34,7 @@ void Renderer::Init(GLFWwindow* window, const uint16_t width, const uint16_t hei
 	CreateFramebuffers();
 
 	_Scene->Load("sponza", &_Device, _CommandPool, _RenderPass, _ShadowRenderPass, _ShadowTexture);
+	_GUI.tree._Scene = _Scene;
 
 	CreateCommandBuffers();
 	CreateSemaphores();
@@ -43,6 +44,10 @@ void Renderer::Draw()
 {
 	_Device().waitForFences(_InFlightFences[_CurrentFrame], VK_TRUE, std::numeric_limits<uint64_t>::max());
 	_Device().resetFences(_InFlightFences[_CurrentFrame]);
+
+	_FrameDuration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start).count();
+	_GUI.perf.AddValue(_FrameDuration);
+	start = std::chrono::steady_clock::now();
 
 	uint32_t imageIndex = _Device().acquireNextImageKHR(_Swapchain, std::numeric_limits<uint64_t>::max(), _ImageAvailableSemaphore[_CurrentFrame], {}).value;
 
@@ -98,6 +103,8 @@ void Renderer::Draw()
 		&imageIndex
 	));
 
+
+	std::cout << _FrameDuration << std::endl;
 	_CurrentFrame = (_CurrentFrame + 1) % 2;
 }
 

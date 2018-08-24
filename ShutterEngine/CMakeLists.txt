@@ -1,6 +1,7 @@
 set(SRC_FOLDERS
     Engine
     Renderer
+    GUI
 )
 
 foreach(loop_var ${SRC_FOLDERS})

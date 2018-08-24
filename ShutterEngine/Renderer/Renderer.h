@@ -35,7 +35,8 @@
 #include "Engine/CubeTexture.h"
 
 #include "vulkan/vulkan.hpp"
-#include "GUI.h"
+#include "GUI/GUI.h"
+#include <chrono>
 
 class Renderer {
 public:
@@ -111,4 +112,7 @@ private:
 	Scene *_Scene;
 
 	GUI _GUI;
+
+	long long _FrameDuration;
+	std::chrono::steady_clock::time_point start;
 };
