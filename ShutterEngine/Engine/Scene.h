@@ -35,7 +35,7 @@ public:
 
 
 	std::vector<Light> _Lights;
-	std::unordered_map<std::string, Material*> _Materials;
+	std::map<std::string, Material*> _Materials;
 	std::unordered_map<std::string, Cubemap> _Cubemaps;
 	std::unordered_map<std::string, Mesh> _Models;
 	std::unordered_map<std::string, std::vector<Object>> _Objects;

@@ -10,6 +10,8 @@ public:
 		_Position(position)
 	{}
 
+	virtual ~SceneObject() {};
+
 	std::string _Name;
 	glm::vec3 _Position;
 };

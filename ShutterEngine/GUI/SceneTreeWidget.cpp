@@ -9,6 +9,20 @@ void SceneTreeWidget::Draw()
 
 	ImGui::Begin("Scene Tree", nullptr, ImGuiWindowFlags_NoResize);
 
+	for (auto &light : _Scene->_Lights) {
+		if (ImGui::Selectable(light._Name.c_str(), light._Name == _Selected)) {
+			if (_SelectedObject == &light) {
+				_Selected = "";
+				_SelectedObject = nullptr;
+
+			}
+			else {
+				_Selected = light._Name;
+				_SelectedObject = &light;
+			}
+		}
+	}
+
 	for (auto &material : _Scene->_Objects) {
 
 		for (auto &object : material.second) {

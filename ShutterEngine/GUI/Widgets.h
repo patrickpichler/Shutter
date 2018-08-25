@@ -27,7 +27,7 @@ public:
 };
 
 class Scene;
-class Object;
+class SceneObject;
 
 class SceneTreeWidget : public Widget {
 public:
@@ -36,12 +36,14 @@ public:
 	Scene *_Scene;
 
 	std::string _Selected;
-	Object *_SelectedObject = nullptr;
+	SceneObject *_SelectedObject = nullptr;
 };
 
 class ControlsWidget : public Widget {
 public:
 	void Draw() override;
+
+	float range;
 
 	SceneTreeWidget *_SceneTree;
 };

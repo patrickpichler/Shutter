@@ -155,14 +155,16 @@ void Scene::Load(const std::string &name, Device *device, const vk::CommandPool 
 		_Objects[material].back()._Rotation = rotation;
 		_Objects[material].back()._Scale = scale;
 
-		if (scene["scene"][i]["textures"]) {
-			int slot = scene["scene"][i]["textures"][0]["slot"].as<int>();
-			std::string name = scene["scene"][i]["textures"][0]["texture"].as<std::string>();
-			Texture texture = _Textures.at(name);
-			_Objects[material].back().AddTexture(slot, texture);
+		for (int j = 0; j < scene["scene"][i]["textures"].size(); ++j) {
+			if (scene["scene"][i]["textures"]) {
+				int slot = scene["scene"][i]["textures"][j]["slot"].as<int>();
+				std::string name = scene["scene"][i]["textures"][j]["texture"].as<std::string>();
+				Texture texture = _Textures.at(name);
+				_Objects[material].back().AddTexture(slot, texture);
+			}
 		}
 
-		if (material == "basic") {
+		if (material == "basic" || material == "bump" || material == "transparent") {
 			_Objects[material].back().AddTexture(2, shadow);
 		}
 
@@ -233,6 +235,16 @@ void Scene::ReloadShader(const vk::RenderPass &renderPass, const vk::Extent2D &s
 		_Materials.at("basic")->BindShader(newShader);
 	}
 	_Materials.at("basic")->ReloadPipeline(renderPass, screenSize.width, screenSize.height);
+
+	shaders = _Materials.at("bump")->GetShaderList();
+	_Materials.at("bump")->ClearShaders();
+
+	for (auto &shader : shaders) {
+		Shader newShader(_Device, shader._Name, shader._Filename, shader._Stage, shader._EntryPoint);
+		shader.Clean();
+		_Materials.at("bump")->BindShader(newShader);
+	}
+	_Materials.at("bump")->ReloadPipeline(renderPass, screenSize.width, screenSize.height);
 }
 
 void Scene::CreateDescriptorSets(Device *device, const uint32_t nbImages)
