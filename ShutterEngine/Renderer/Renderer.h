@@ -2,11 +2,6 @@
 #include <vector>
 #include <memory>
 #define NOMINMAX
-#define VK_USE_PLATFORM_WIN32_KHR
-#define GLFW_EXPOSE_NATIVE_WGL
-#define GLFW_EXPOSE_NATIVE_WIN32
-#include <GLFW/glfw3.h>
-#include <GLFW/glfw3native.h>
 #include "Shader.h"
 #include "Extensions.h"
 #include "Layers.h"
@@ -37,6 +32,7 @@
 #include "vulkan/vulkan.hpp"
 #include "GUI/GUI.h"
 #include <chrono>
+#include "Surface.h"
 
 class Renderer {
 public:
@@ -54,8 +50,6 @@ public:
 private:
 	void CreateInstance();
 	void CreateDevice();
-	void CreateSurface();
-	void CreateSwapchain();
 	void CreateRenderPass();
 	void CreateShadowRenderPass();
 	void CreateFramebuffers();
@@ -70,6 +64,7 @@ private:
 	// Screen/window related
 	GLFWwindow *_Window;
 	vk::Extent2D _ScreenSize;
+	Surface _Surface;
 
 	// Rendering related
 	Extension _ExtensionManager;
@@ -78,10 +73,6 @@ private:
 	Device _Device;
 	vk::Instance _Instance;
 
-	vk::SurfaceKHR _Surface;
-
-	vk::SwapchainKHR _Swapchain;
-	std::vector<Image> _SwapchainImageViews;
 	std::vector<Image> _ImageColor;
 	Image _DepthImage;
 	Image _ShadowImage;

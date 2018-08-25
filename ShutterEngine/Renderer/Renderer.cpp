@@ -15,11 +15,11 @@ void Renderer::Init(GLFWwindow* window, const uint16_t width, const uint16_t hei
 
 
 	CreateInstance();
-	CreateSurface();
+	_Surface = Surface(&_Device, &_Instance, window);
 	CreateDevice();
-	CreateSwapchain();
+	_Surface.CreateSwapChain();
 
-	_Scene->CreateDescriptorSets(&_Device, _SwapchainImageViews.size());
+	_Scene->CreateDescriptorSets(&_Device, _Surface._NbImages);
 	CreateCommandPool();
 
 	CreateDepth();
@@ -30,7 +30,7 @@ void Renderer::Init(GLFWwindow* window, const uint16_t width, const uint16_t hei
 	CreateShadowRenderPass();
 
 
-	_GUI.Init(&_Device, _Window, _Surface, _ScreenSize, _Instance, _Swapchain, _CommandPool);
+	_GUI.Init(&_Device, _Window, _Surface._Surface, _ScreenSize, _Instance, _Surface._Swapchain, _CommandPool);
 	CreateFramebuffers();
 
 	_Scene->Load("sponza", &_Device, _CommandPool, _RenderPass, _ShadowRenderPass, _ShadowTexture);
@@ -49,7 +49,7 @@ void Renderer::Draw()
 	_GUI.perf.AddValue(_FrameDuration);
 	start = std::chrono::steady_clock::now();
 
-	uint32_t imageIndex = _Device().acquireNextImageKHR(_Swapchain, std::numeric_limits<uint64_t>::max(), _ImageAvailableSemaphore[_CurrentFrame], {}).value;
+	uint32_t imageIndex = _Device().acquireNextImageKHR(_Surface._Swapchain, std::numeric_limits<uint64_t>::max(), _ImageAvailableSemaphore[_CurrentFrame], {}).value;
 
 	_Scene->Update(_CurrentFrame);
 
@@ -99,7 +99,7 @@ void Renderer::Draw()
 		1,
 		&_RenderFinishedSemaphore[_CurrentFrame],
 		1,
-		&_Swapchain,
+		&_Surface._Swapchain,
 		&imageIndex
 	));
 
@@ -203,51 +203,8 @@ void Renderer::CreateDevice() {
 	deviceRequestInfo.SupportPresentation = true;
 	deviceRequestInfo.SupportGraphics = true;
 
-	_Device = Device::GetDevice(_Instance, deviceRequestInfo, _Surface);
-	_Device.Init(deviceRequestInfo, _Surface);
-}
-
-void Renderer::CreateSurface()
-{
-	_Surface = _Instance.createWin32SurfaceKHR(vk::Win32SurfaceCreateInfoKHR({}, GetModuleHandle(nullptr), glfwGetWin32Window(_Window)));
-}
-
-void Renderer::CreateSwapchain()
-{
-	auto& queueIndexSet = _Device.GetQueueIndexSet();
-	std::vector<uint32_t> queueIndexList;
-	std::copy(queueIndexSet.begin(), queueIndexSet.end(), std::back_inserter(queueIndexList));
-
-	vk::Format swapchainFormat = vk::Format::eR8G8B8A8Unorm;
-
-	_Swapchain = _Device().createSwapchainKHR(vk::SwapchainCreateInfoKHR(
-		{},
-		_Surface,
-		1,
-		swapchainFormat,
-		vk::ColorSpaceKHR::eSrgbNonlinear,
-		_ScreenSize,
-		1,
-		vk::ImageUsageFlagBits::eColorAttachment,
-		vk::SharingMode::eExclusive,
-		queueIndexList.size(),
-		queueIndexList.data(),
-		vk::SurfaceTransformFlagBitsKHR::eIdentity,
-		vk::CompositeAlphaFlagBitsKHR::eOpaque,
-		vk::PresentModeKHR::eFifo,
-		true,
-		{}
-	));
-
-
-	std::vector<vk::Image> swapchainImages;
-	swapchainImages = _Device().getSwapchainImagesKHR(_Swapchain);
-
-	_SwapchainImageViews.resize(swapchainImages.size());
-
-	for (uint32_t i = 0; i < swapchainImages.size(); ++i) {
-		_SwapchainImageViews[i].FromVkImage(&_Device, swapchainImages[i], swapchainFormat);
-	}
+	_Device = Device::GetDevice(_Instance, deviceRequestInfo, _Surface._Surface);
+	_Device.Init(deviceRequestInfo, _Surface._Surface);
 }
 
 void Renderer::CreateRenderPass()
@@ -400,9 +357,9 @@ void Renderer::CreateFramebuffers()
 {
 	// Framebuffer used in shadow rendering
 	{
-		_ShadowFramebuffer.resize(_SwapchainImageViews.size());
+		_ShadowFramebuffer.resize(_Surface._NbImages);
 
-		for (size_t i = 0; i < _SwapchainImageViews.size(); ++i) {
+		for (size_t i = 0; i < _Surface._NbImages; ++i) {
 			std::array<vk::ImageView, 1> attachments = {
 				_ShadowImage.GetImageView(),
 			};
@@ -421,13 +378,13 @@ void Renderer::CreateFramebuffers()
 
 	// Framebuffer used in offscreen to render to scene
 	{
-		_Framebuffers.resize(_SwapchainImageViews.size());
+		_Framebuffers.resize(_Surface._NbImages);
 
-		for (size_t i = 0; i < _SwapchainImageViews.size(); ++i) {
+		for (size_t i = 0; i < _Surface._NbImages; ++i) {
 			std::array<vk::ImageView, 3> attachments = {
 				_ImageColor[i].GetImageView(),
 				_DepthImage.GetImageView(),
-				_SwapchainImageViews[i].GetImageView()
+				_Surface._SwapchainImages[i].GetImageView()
 			};
 
 			_Framebuffers[i] = _Device().createFramebuffer(vk::FramebufferCreateInfo(
@@ -444,11 +401,11 @@ void Renderer::CreateFramebuffers()
 
 	// Framebuffer used for rendering the UI
 	{
-		_FramebuffersPresent.resize(_SwapchainImageViews.size());
+		_FramebuffersPresent.resize(_Surface._NbImages);
 
-		for (size_t i = 0; i < _SwapchainImageViews.size(); ++i) {
+		for (size_t i = 0; i < _Surface._NbImages; ++i) {
 			std::array<vk::ImageView, 1> attachments = {
-				_SwapchainImageViews[i].GetImageView()
+				_Surface._SwapchainImages[i].GetImageView()
 			};
 
 			_FramebuffersPresent[i] = _Device().createFramebuffer(vk::FramebufferCreateInfo(
@@ -498,18 +455,16 @@ void Renderer::CreateDepth()
 
 void Renderer::CreateResolve()
 {
-	vk::Format colorFormat = vk::Format::eR8G8B8A8Unorm;
-
 	// Main color image
 	{
-		_ImageColor.resize(_SwapchainImageViews.size());
+		_ImageColor.resize(_Surface._NbImages);
 
-		for (size_t i = 0; i < _SwapchainImageViews.size(); i++) {
+		for (size_t i = 0; i < _Surface._NbImages; i++) {
 			_ImageColor.at(i) = Image(
 				&_Device,
 				VkExtent3D{ _ScreenSize.width, _ScreenSize.height, 1 },
 				1,
-				colorFormat,
+				_Surface._SelectedSurfaceFormat.format,
 				vk::ImageUsageFlagBits::eTransientAttachment | vk::ImageUsageFlagBits::eColorAttachment,
 				false,
 				vk::SampleCountFlagBits::e4
