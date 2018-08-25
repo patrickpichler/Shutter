@@ -9,6 +9,8 @@ public:
 
 	bool IsVisible = true;
 
+	int _ViewportWidth, _ViewportHeight;
+
 protected:
 	const float _Margin = 15.0f;
 };

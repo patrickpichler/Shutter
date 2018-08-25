@@ -16,6 +16,8 @@ void GUI::Init(Device *device, GLFWwindow *window, const vk::SurfaceKHR & surfac
 	CreateRenderPass();
 	CreateCommandBuffers(cmdPool);
 
+	windowSize = screenSize;
+
 	ImGui_ImplVulkan_InitInfo init_info = {};
 	init_info.Instance = VkInstance(instance);
 	init_info.PhysicalDevice = VkPhysicalDevice(_Device->GetPhysicalDevice());
@@ -55,7 +57,9 @@ void GUI::Render(const size_t frameId, const std::vector<vk::Framebuffer> &fb, s
 
 	perf.Draw();
 	tree.Draw();
+	tree._ViewportWidth = windowSize.width;
 	controls.Draw();
+	controls._ViewportHeight = windowSize.height;
 
 
 	ImGui::Render();
@@ -68,7 +72,7 @@ void GUI::Render(const size_t frameId, const std::vector<vk::Framebuffer> &fb, s
 		vk::RenderPassBeginInfo(
 			_RenderPass,
 			fb[frameId],
-			{ {0,0}, {1024, 768} },
+			{ {0,0}, {windowSize.width, windowSize.height} },
 			1,
 			clearValues.data()
 		),

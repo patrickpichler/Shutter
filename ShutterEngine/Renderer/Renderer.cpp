@@ -23,11 +23,11 @@ void Renderer::Init(GLFWwindow* window, const uint16_t width, const uint16_t hei
 	CreateCommandPool();
 
 	CreateDepth();
-	CreateResolve();
+	CreateOffscreen();
 
 
-	CreateRenderPass();
 	CreateShadowRenderPass();
+	CreateRenderPass();
 
 
 	_GUI.Init(&_Device, _Window, _Surface._Surface, _ScreenSize, _Instance, _Surface._Swapchain, _CommandPool);
@@ -154,7 +154,43 @@ void Renderer::WaitIdle()
 
 void Renderer::ReloadShaders()
 {
-	_Scene->ReloadShader(_RenderPass, _ScreenSize);
+	_Scene->ReloadShader(_RenderPass, _Surface.GetWindowDimensions());
+}
+
+void Renderer::Resize()
+{
+	WaitIdle();
+	_Surface.RecreateSwapChain();
+
+	_DepthImage.Clean();
+	CreateDepth();
+
+	for (auto &image : _ImageColor) {
+		image.Clean();
+	}
+
+	CreateOffscreen();
+
+
+	for (auto &fb : _ShadowFramebuffer) {
+		_Device().destroyFramebuffer(fb);
+	}
+
+	for (auto &fb : _Framebuffers) {
+		_Device().destroyFramebuffer(fb);
+	}
+
+	for (auto &fb : _FramebuffersPresent) {
+		_Device().destroyFramebuffer(fb);
+	}
+
+	CreateFramebuffers();
+
+	_Scene->Resize(_RenderPass, _ShadowRenderPass, _Surface.GetWindowDimensions());
+
+	_GUI.windowSize = _Surface.GetWindowDimensions();
+
+	//_Scene->ReloadShader(_RenderPass, _Surface.GetWindowDimensions());
 }
 
 void Renderer::CreateInstance()
@@ -212,7 +248,7 @@ void Renderer::CreateRenderPass()
 	// Color Image
 	vk::AttachmentDescription colorAttachement(
 		{},
-		vk::Format::eR8G8B8A8Unorm,
+		_Surface._SelectedSurfaceFormat.format,
 		vk::SampleCountFlagBits::e4,
 		vk::AttachmentLoadOp::eClear,
 		vk::AttachmentStoreOp::eStore,
@@ -248,7 +284,7 @@ void Renderer::CreateRenderPass()
 	// Multisample Resolved Image
 	vk::AttachmentDescription resolveAttachement(
 		{},
-		vk::Format::eR8G8B8A8Unorm,
+		_Surface._SelectedSurfaceFormat.format,
 		vk::SampleCountFlagBits::e1,
 		vk::AttachmentLoadOp::eDontCare,
 		vk::AttachmentStoreOp::eStore,
@@ -369,8 +405,8 @@ void Renderer::CreateFramebuffers()
 				_ShadowRenderPass,
 				attachments.size(),
 				attachments.data(),
-				_ScreenSize.width,
-				_ScreenSize.height,
+				_Surface.GetWindowDimensions().width,
+				_Surface.GetWindowDimensions().height,
 				1
 			));
 		}
@@ -392,8 +428,8 @@ void Renderer::CreateFramebuffers()
 				_RenderPass,
 				attachments.size(),
 				attachments.data(),
-				_ScreenSize.width,
-				_ScreenSize.height,
+				_Surface.GetWindowDimensions().width,
+				_Surface.GetWindowDimensions().height,
 				1
 			));
 		}
@@ -413,8 +449,8 @@ void Renderer::CreateFramebuffers()
 				_GUI._RenderPass,
 				attachments.size(),
 				attachments.data(),
-				_ScreenSize.width,
-				_ScreenSize.height,
+				_Surface.GetWindowDimensions().width,
+				_Surface.GetWindowDimensions().height,
 				1
 			));
 		}
@@ -430,7 +466,7 @@ void Renderer::CreateDepth()
 {
 	_DepthImage = Image(
 		&_Device,
-		VkExtent3D{ _ScreenSize.width, _ScreenSize.height, 1 },
+		VkExtent3D{ _Surface.GetWindowDimensions().width, _Surface.GetWindowDimensions().height, 1 },
 		1,
 		vk::Format::eD32Sfloat,
 		vk::ImageUsageFlagBits::eDepthStencilAttachment,
@@ -440,7 +476,7 @@ void Renderer::CreateDepth()
 
 	_ShadowImage = Image(
 		&_Device,
-		VkExtent3D{ _ScreenSize.width, _ScreenSize.height, 1 },
+		VkExtent3D{ _Surface.GetWindowDimensions().width, _Surface.GetWindowDimensions().height, 1 },
 		1,
 		vk::Format::eD32Sfloat,
 		vk::ImageUsageFlagBits::eDepthStencilAttachment | vk::ImageUsageFlagBits::eSampled,
@@ -453,7 +489,7 @@ void Renderer::CreateDepth()
 	_ShadowTexture.CreateSampler();
 }
 
-void Renderer::CreateResolve()
+void Renderer::CreateOffscreen()
 {
 	// Main color image
 	{
@@ -462,7 +498,7 @@ void Renderer::CreateResolve()
 		for (size_t i = 0; i < _Surface._NbImages; i++) {
 			_ImageColor.at(i) = Image(
 				&_Device,
-				VkExtent3D{ _ScreenSize.width, _ScreenSize.height, 1 },
+				VkExtent3D{ _Surface.GetWindowDimensions().width, _Surface.GetWindowDimensions().height, 1 },
 				1,
 				_Surface._SelectedSurfaceFormat.format,
 				vk::ImageUsageFlagBits::eTransientAttachment | vk::ImageUsageFlagBits::eColorAttachment,
@@ -491,23 +527,25 @@ void Renderer::BuildShadowCommandBuffers()
 		vk::RenderPassBeginInfo(
 			_ShadowRenderPass,
 			_ShadowFramebuffer[_CurrentFrame],
-			{ {0, 0}, _ScreenSize },
+			{ {0, 0}, _Surface.GetWindowDimensions() },
 			clearValues.size(),
 			clearValues.data()
 		),
 		vk::SubpassContents::eInline
 	);
 
+	auto dim = _Surface.GetWindowDimensions();
+
 	_ShadowCommandBuffers[_CurrentFrame].bindDescriptorSets(
 		vk::PipelineBindPoint::eGraphics,
-		_Scene->_Materials.at("shadow").GetPipelineLayout(),
+		_Scene->_Materials.at("shadow")->GetPipelineLayout(),
 		0,
 		{
 			_Scene->GetDescriptorSet(_CurrentFrame)
 		},
 		{}
 	);
-	_ShadowCommandBuffers[_CurrentFrame].bindPipeline(vk::PipelineBindPoint::eGraphics, _Scene->_Materials.at("shadow").GetPipeline());
+	_ShadowCommandBuffers[_CurrentFrame].bindPipeline(vk::PipelineBindPoint::eGraphics, _Scene->_Materials.at("shadow")->GetPipeline());
 
 
 	for (const auto &object : _Scene->_Objects["basic"]) {
@@ -515,7 +553,7 @@ void Renderer::BuildShadowCommandBuffers()
 
 		_ShadowCommandBuffers[_CurrentFrame].bindDescriptorSets(
 			vk::PipelineBindPoint::eGraphics,
-			_Scene->_Materials.at("shadow").GetPipelineLayout(),
+			_Scene->_Materials.at("shadow")->GetPipelineLayout(),
 			0,
 			{
 				_Scene->GetDescriptorSet(_CurrentFrame),
@@ -543,7 +581,7 @@ void Renderer::BuildCommandBuffers()
 		vk::RenderPassBeginInfo(
 			_RenderPass,
 			_Framebuffers[_CurrentFrame],
-			{ {0, 0}, _ScreenSize },
+			{ {0, 0}, _Surface.GetWindowDimensions() },
 			clearValues.size(),
 			clearValues.data()
 		),
@@ -552,7 +590,7 @@ void Renderer::BuildCommandBuffers()
 
 	_CommandBuffers[_CurrentFrame].bindDescriptorSets(
 		vk::PipelineBindPoint::eGraphics,
-		_Scene->_Materials.at("basic").GetPipelineLayout(),
+		_Scene->_Materials.at("basic")->GetPipelineLayout(),
 		0,
 		{
 			_Scene->GetDescriptorSet(_CurrentFrame)
@@ -561,7 +599,7 @@ void Renderer::BuildCommandBuffers()
 	);
 
 	for (const auto &mat : _Scene->_Materials) {
-		_CommandBuffers[_CurrentFrame].bindPipeline(vk::PipelineBindPoint::eGraphics, mat.second.GetPipeline());
+		_CommandBuffers[_CurrentFrame].bindPipeline(vk::PipelineBindPoint::eGraphics, mat.second->GetPipeline());
 
 
 		for (const auto &object : _Scene->_Objects[mat.first]) {
@@ -569,7 +607,7 @@ void Renderer::BuildCommandBuffers()
 
 			_CommandBuffers[_CurrentFrame].bindDescriptorSets(
 				vk::PipelineBindPoint::eGraphics,
-				mat.second.GetPipelineLayout(),
+				mat.second->GetPipelineLayout(),
 				0,
 				{
 					_Scene->GetDescriptorSet(_CurrentFrame),

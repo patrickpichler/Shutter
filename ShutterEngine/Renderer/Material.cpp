@@ -28,7 +28,7 @@ void Material::ReloadPipeline(const vk::RenderPass &renderPass, const uint16_t w
 {
 	_Device->GetDevice().destroyPipeline(_Pipeline);
 
-	PopulateInfo(1024, 768);
+	PopulateInfo(width, height);
 	CreatePipeline(renderPass);
 }
 

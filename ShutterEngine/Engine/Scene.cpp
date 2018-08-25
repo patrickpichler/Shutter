@@ -72,27 +72,27 @@ void Scene::Load(const std::string &name, Device *device, const vk::CommandPool 
 		std::string pipeline = config["materials"][i]["pipeline"].as<std::string>();
 		if (pipeline == "basic") {
 			// Create the material
-			Material mat(device, this, 1024, 768, 1024);
-			mat.BindShader(vert);
-			mat.BindShader(frag);
-			mat.CreatePipeline(renderPass);
-			_Materials.insert(std::pair<std::string, Material>(name, mat));
+			Material *mat = new Material(device, this, 1024, 768, 1024);
+			mat->BindShader(vert);
+			mat->BindShader(frag);
+			mat->CreatePipeline(renderPass);
+			_Materials.insert(std::pair<std::string, Material*>(name, mat));
 		}
 		else if (pipeline == "cubemap") {
 			// Create the material
-			Cubemap mat(device, this, 1024, 768, 1024);
-			mat.BindShader(vert);
-			mat.BindShader(frag);
-			mat.CreatePipeline(renderPass);
-			_Materials.insert(std::pair<std::string, Material>(name, mat));
+			Cubemap *mat = new Cubemap(device, this, 1024, 768, 1024);
+			mat->BindShader(vert);
+			mat->BindShader(frag);
+			mat->CreatePipeline(renderPass);
+			_Materials.insert(std::pair<std::string, Material*>(name, mat));
 		}
 		else if (pipeline == "shadow") {
 			// Create the material
-			Shadow mat(device, this, 1024, 768, 1024);
-			mat.BindShader(vert);
-			mat.BindShader(frag);
-			mat.CreatePipeline(shadowPass);
-			_Materials.insert(std::pair<std::string, Material>(name, mat));
+			Shadow *mat = new Shadow(device, this, 1024, 768, 1024);
+			mat->BindShader(vert);
+			mat->BindShader(frag);
+			mat->CreatePipeline(shadowPass);
+			_Materials.insert(std::pair<std::string, Material*>(name, mat));
 		}
 		_Objects.insert(std::pair<std::string, std::vector<Object>>(name, std::vector<Object>()));
 	}
@@ -144,7 +144,7 @@ void Scene::Load(const std::string &name, Device *device, const vk::CommandPool 
 		std::string name = scene["scene"][i]["name"].as<std::string>();
 
 		std::string material = scene["scene"][i]["material"].as<std::string>();
-		Material *materialM = &_Materials.at(material);
+		Material *materialM = _Materials.at(material);
 
 		glm::vec3 position = scene["scene"][i]["position"].as<glm::vec3>();
 		glm::vec3 rotation = scene["scene"][i]["rotation"].as<glm::vec3>();
@@ -172,6 +172,22 @@ void Scene::Load(const std::string &name, Device *device, const vk::CommandPool 
 	}
 
 	UploadDynamic();
+}
+
+void Scene::Resize(const vk::RenderPass &renderPass, const vk::RenderPass &renderShadow, const vk::Extent2D & dimension)
+{
+	for (auto &material : _Materials) {
+		if (material.first == "shadow") {
+
+			material.second->ReloadPipeline(renderShadow, dimension.width, dimension.height);
+		}
+		else {
+			material.second->ReloadPipeline(renderPass, dimension.width, dimension.height);
+		}
+	}
+
+	_Camera._Width = dimension.width;
+	_Camera._Height = dimension.height;
 }
 
 void Scene::CreateDynamic(Device *device)
@@ -208,15 +224,15 @@ void Scene::UploadDynamic()
 void Scene::ReloadShader(const vk::RenderPass &renderPass, const vk::Extent2D &screenSize)
 {
 	// Reload the basic Material
-	std::vector<Shader> shaders =  _Materials.at("basic").GetShaderList();
-	_Materials.at("basic").ClearShaders();
+	std::vector<Shader> shaders =  _Materials.at("basic")->GetShaderList();
+	_Materials.at("basic")->ClearShaders();
 
 	for (auto &shader : shaders) {
 		Shader newShader(_Device, shader._Name, shader._Filename, shader._Stage, shader._EntryPoint);
 		shader.Clean();
-		_Materials.at("basic").BindShader(newShader);
+		_Materials.at("basic")->BindShader(newShader);
 	}
-	_Materials.at("basic").ReloadPipeline(renderPass, screenSize.width, screenSize.height);
+	_Materials.at("basic")->ReloadPipeline(renderPass, screenSize.width, screenSize.height);
 }
 
 void Scene::CreateDescriptorSets(Device *device, const uint32_t nbImages)

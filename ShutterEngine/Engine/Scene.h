@@ -31,9 +31,11 @@ public:
 	// Load a scene from a set of yaml files
 	void Load(const std::string &name, Device *device, const vk::CommandPool &cmdPool, const vk::RenderPass &renderPass, const vk::RenderPass &shadowPass, const Texture &shadow);
 
+	void Resize(const vk::RenderPass &renderPass, const vk::RenderPass &renderShadow, const vk::Extent2D &dimension);
+
 
 	std::vector<Light> _Lights;
-	std::unordered_map<std::string, Material> _Materials;
+	std::unordered_map<std::string, Material*> _Materials;
 	std::unordered_map<std::string, Cubemap> _Cubemaps;
 	std::unordered_map<std::string, Mesh> _Models;
 	std::unordered_map<std::string, std::vector<Object>> _Objects;

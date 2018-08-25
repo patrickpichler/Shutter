@@ -28,11 +28,11 @@ public:
 	glm::mat4 GetProjection() const;
 	glm::mat4 GetView() const;
 
-private:
-	float _FOV;
-
 	uint16_t _Width;
 	uint16_t _Height;
+
+private:
+	float _FOV;
 
 	glm::vec3 _Front;
 	glm::vec3 _Up;

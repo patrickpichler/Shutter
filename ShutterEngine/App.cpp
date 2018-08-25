@@ -13,10 +13,11 @@ void Application::Init()
 {
 	glfwInit();
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-	glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+	//glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 	Window = glfwCreateWindow(_Width, _Height, ApplicationName.c_str() , nullptr, nullptr);
 	//glfwSetInputMode(Window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 	glfwSetWindowUserPointer(Window, this);
+	glfwSetFramebufferSizeCallback(Window, ResizeCallback);
 	//glfwSetMouseButtonCallback(Window, Application::MouseCallback);
 
 	_Scene = Scene();
@@ -77,6 +78,11 @@ void Application::TriggerShaderReload()
 	shaderReaload = true;
 }
 
+void Application::TriggerResize()
+{
+	render.Resize();
+}
+
 void Application::KeyCallback(GLFWwindow * window, int key, int scancode, int action, int mods)
 {
 	// Reload the shaders
@@ -93,6 +99,11 @@ void Application::KeyCallback(GLFWwindow * window, int key, int scancode, int ac
 void Application::MouseCallback(GLFWwindow * window, int button, int action, int mods)
 {
 
+}
+
+void Application::ResizeCallback(GLFWwindow * window, int width, int height)
+{
+	static_cast<Application*>(glfwGetWindowUserPointer(window))->TriggerResize();
 }
 
 void Application::DrawFrame()

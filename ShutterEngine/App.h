@@ -16,9 +16,11 @@ public:
 	void Clean();
 
 	void TriggerShaderReload();
+	void TriggerResize();
 
 	static void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
 	static void MouseCallback(GLFWwindow* window, int button, int action, int mods);
+	static void ResizeCallback(GLFWwindow* window, int width, int height);
 
 
 	bool broadcastCursor = true;

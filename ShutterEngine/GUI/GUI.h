@@ -27,6 +27,8 @@ public:
 	SceneTreeWidget tree;
 	ControlsWidget controls;
 
+	vk::Extent2D windowSize;
+
 private:
 	void CreateRenderPass();
 	void CreateDescriptorPool();

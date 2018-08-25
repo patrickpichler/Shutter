@@ -46,6 +46,7 @@ public:
 	void WaitIdle();
 
 	void ReloadShaders();
+	void Resize();
 
 private:
 	void CreateInstance();
@@ -55,7 +56,7 @@ private:
 	void CreateFramebuffers();
 	void CreateCommandPool();
 	void CreateDepth();
-	void CreateResolve();
+	void CreateOffscreen();
 	void CreateCommandBuffers();
 	void BuildShadowCommandBuffers();
 	void BuildCommandBuffers();

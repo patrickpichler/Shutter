@@ -26,7 +26,7 @@ const vk::Extent2D Surface::GetWindowDimensions() const
 {
 	int width, height;
 
-	glfwGetFramebufferSize(_Window, &width, &height);
+	glfwGetWindowSize(_Window, &width, &height);
 
 	return vk::Extent2D(width, height);
 }
@@ -76,6 +76,7 @@ void Surface::CreateSwapChain()
 void Surface::RecreateSwapChain()
 {
 	CleanSwapChain();
+	_NbImages = 0;
 	CreateSwapChain();
 }
 

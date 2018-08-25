@@ -5,7 +5,7 @@
 void SceneTreeWidget::Draw()
 {
 	ImGui::SetNextWindowSize(ImVec2(200, 300));
-	ImGui::SetNextWindowPos(ImVec2(1024 - 200 - _Margin, _Margin));
+	ImGui::SetNextWindowPos(ImVec2(_ViewportWidth - 200 - _Margin, _Margin));
 
 	ImGui::Begin("Scene Tree", nullptr, ImGuiWindowFlags_NoResize);
 
