@@ -64,4 +64,6 @@ private:
 	vk::ImageView _View;
 
 	vk::DeviceMemory _Memory;
+
+	bool _FromSwapchain = false;
 };

@@ -44,6 +44,8 @@ void Renderer::Draw()
 {
 	_Device().waitForFences(_InFlightFences[_CurrentFrame], VK_TRUE, std::numeric_limits<uint64_t>::max());
 	_Device().resetFences(_InFlightFences[_CurrentFrame]);
+	_Device().resetFences(_ShadowFences[_CurrentFrame]);
+	_Device().resetFences(_OffscreenFences[_CurrentFrame]);
 
 	_FrameDuration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start).count();
 	_GUI.perf.AddValue(_FrameDuration);
@@ -72,7 +74,6 @@ void Renderer::Draw()
 
 
 	_Device().waitForFences(_ShadowFences[_CurrentFrame], VK_TRUE, std::numeric_limits<uint64_t>::max());
-	_Device().resetFences(_ShadowFences[_CurrentFrame]);
 
 	_Scene->Update(_CurrentFrame);
 

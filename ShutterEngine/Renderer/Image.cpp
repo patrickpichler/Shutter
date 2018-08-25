@@ -47,24 +47,25 @@ void Image::FromVkImage(
 	_MipLevels = 1;
 
 	CreateImageView();
+	_FromSwapchain = true;
 }
 
 void Image::Clean()
 {
-	//if (_View) {
-	//	_Device->GetDevice().destroyImageView(_View);
-	//}
+	if (_View) {
+		_Device->GetDevice().destroyImageView(_View);
+	}
 
-	//// In case we obtained the image through the sawpchain, do not clear it
-	//if (!_Usage) {
-	//	if (_Image) {
-	//		_Device->GetDevice().destroyImage(_Image);
-	//	}
+	// In case we obtained the image through the sawpchain, do not clear it
+	if (!_FromSwapchain) {
+		if (_Image) {
+			_Device->GetDevice().destroyImage(_Image);
+		}
 
-	//	if (_Memory) {
-	//		_Device->GetDevice().freeMemory(_Memory);
-	//	}
-	//}
+		if (_Memory) {
+			_Device->GetDevice().freeMemory(_Memory);
+		}
+	}
 }
 
 void Image::GenerateMipmaps(const vk::CommandPool& cmdPool)
@@ -168,7 +169,7 @@ void Image::TransitionLayout(const vk::CommandPool &cmdPool, const vk::ImageLayo
 	barriers[0].newLayout = newLayout;
 	barriers[0].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 	barriers[0].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	barriers[0].subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
+	barriers[0].subresourceRange.aspectMask = _Format == vk::Format::eD32Sfloat ? vk::ImageAspectFlagBits::eDepth : vk::ImageAspectFlagBits::eColor;
 	barriers[0].subresourceRange.baseArrayLayer = 0;
 	barriers[0].subresourceRange.layerCount = _NbLayers;
 	barriers[0].subresourceRange.levelCount = _MipLevels;
@@ -266,7 +267,7 @@ void Image::CreateImageView()
 		_Format,
 		vk::ComponentMapping(),
 		vk::ImageSubresourceRange(
-			_Usage == vk::ImageUsageFlagBits::eDepthStencilAttachment ? vk::ImageAspectFlagBits::eDepth : vk::ImageAspectFlagBits::eColor,
+			_Format == vk::Format::eD32Sfloat ? vk::ImageAspectFlagBits::eDepth : vk::ImageAspectFlagBits::eColor,
 			0,
 			_MipLevels,
 			0,

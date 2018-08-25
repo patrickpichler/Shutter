@@ -104,7 +104,7 @@ void GUI::CreateRenderPass()
 {
 	vk::AttachmentDescription colorAttachement(
 		{},
-		vk::Format::eR8G8B8A8Unorm,
+		vk::Format::eB8G8R8A8Unorm,
 		vk::SampleCountFlagBits::e1,
 		vk::AttachmentLoadOp::eLoad,
 		vk::AttachmentStoreOp::eStore,
