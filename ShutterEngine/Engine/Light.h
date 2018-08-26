@@ -18,6 +18,7 @@ public:
 	LightUniformData GetUniformData();
 
 	glm::vec3 _Colour;
+	float _Strength;
 private:
 	// Parameters used to set the range of a point light
 	double _Constant;
