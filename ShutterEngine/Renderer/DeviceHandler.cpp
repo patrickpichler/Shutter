@@ -14,8 +14,21 @@ Device::Device(const vk::PhysicalDevice & physicalDevice):
 	_QueueFamilyProperties = _PhysicalDevice.getQueueFamilyProperties();
 }
 
-void Device::Init(const DeviceRequestInfo& info, optional_surface surface)
+void Device::Init(DeviceRequestInfo& info, optional_surface surface)
 {
+	// Activate the debug markers if we can
+	auto it = std::find_if(
+		_DeviceExtensions.begin(),
+		_DeviceExtensions.end(),
+		[](const vk::ExtensionProperties&  availableExtenion) {
+		return std::strcmp(availableExtenion.extensionName, VK_EXT_DEBUG_MARKER_EXTENSION_NAME) == 0;
+	}
+	);
+	if (it != _DeviceExtensions.end()) {
+		_SupportDebugMarkers = true;
+		info.RequiredExtensions.push_back(VK_EXT_DEBUG_MARKER_EXTENSION_NAME);
+	}
+
 	PickQueueFamilyIndex(info, surface);
 
 	std::vector<vk::DeviceQueueCreateInfo> deviceQueuesInfo;
@@ -38,6 +51,11 @@ void Device::Init(const DeviceRequestInfo& info, optional_surface surface)
 	for (auto &queue : _Queues)
 	{
 		queue.second.VulkanQueue = _Device.getQueue(queue.second.Index, 0);
+	}
+
+	if (_SupportDebugMarkers) {
+		pfnCmdDebugMarkerBegin = (PFN_vkCmdDebugMarkerBeginEXT)_Device.getProcAddr("vkCmdDebugMarkerBeginEXT");
+		pfnCmdDebugMarkerEnd = (PFN_vkCmdDebugMarkerEndEXT)_Device.getProcAddr("vkCmdDebugMarkerEndEXT");
 	}
 }
 
@@ -100,6 +118,26 @@ const bool Device::IsSuitable(const DeviceRequestInfo& info, optional_surface su
 	}
 
 	return havePresentation && haveGraphics;
+}
+
+void Device::StartMarker(const vk::CommandBuffer & cmdBuffer, const std::string & name)
+{
+	if (_SupportDebugMarkers) {
+		VkDebugMarkerMarkerInfoEXT markerInfo = {};
+		markerInfo.sType = VK_STRUCTURE_TYPE_DEBUG_MARKER_MARKER_INFO_EXT;
+		float color[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
+		memcpy(markerInfo.color, &color[0], sizeof(float) * 4);
+		markerInfo.pMarkerName = name.c_str();
+
+		pfnCmdDebugMarkerBegin(VkCommandBuffer(cmdBuffer), &markerInfo);
+	}
+}
+
+void Device::EndMarker(const vk::CommandBuffer & cmdBuffer)
+{
+	if (_SupportDebugMarkers) {
+		pfnCmdDebugMarkerEnd(VkCommandBuffer(cmdBuffer));
+	}
 }
 
 void Device::PickQueueFamilyIndex(const DeviceRequestInfo& info, optional_surface surface)

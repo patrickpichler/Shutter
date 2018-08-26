@@ -12,7 +12,7 @@
 
 #include "Material.h"
 
-#define VULKAN_VERSION VK_API_VERSION_1_0
+#define VULKAN_VERSION VK_API_VERSION_1_1
 
 #define GLM_FORCE_RADIANS
 #define GLM_DEPTH_ZERO_TO_ONE

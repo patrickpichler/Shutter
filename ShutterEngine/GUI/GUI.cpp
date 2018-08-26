@@ -68,6 +68,7 @@ void GUI::Render(const size_t frameId, const std::vector<vk::Framebuffer> &fb, s
 	clearValues[0] = vk::ClearColorValue(std::array<float, 4>{ 0.0f, 0.0f, 0.0f, 1.0f });
 	
 	_CommandBuffers[frameId].begin({ vk::CommandBufferUsageFlagBits::eSimultaneousUse });
+	_Device->StartMarker(_CommandBuffers[frameId], "GUI");
 	_CommandBuffers[frameId].beginRenderPass(
 		vk::RenderPassBeginInfo(
 			_RenderPass,
@@ -80,6 +81,7 @@ void GUI::Render(const size_t frameId, const std::vector<vk::Framebuffer> &fb, s
 	);
 	ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), VkCommandBuffer(_CommandBuffers[frameId]));
 	_CommandBuffers[frameId].endRenderPass();
+	_Device->EndMarker(_CommandBuffers[frameId]);
 	_CommandBuffers[frameId].end();
 
 	_Device->GetQueue(E_QUEUE_TYPE::GRAPHICS).VulkanQueue.submit(

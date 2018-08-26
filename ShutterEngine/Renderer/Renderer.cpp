@@ -521,6 +521,8 @@ void Renderer::BuildShadowCommandBuffers()
 {
 	_ShadowCommandBuffers[_CurrentFrame].begin({ vk::CommandBufferUsageFlagBits::eSimultaneousUse });
 
+	_Device.StartMarker(_ShadowCommandBuffers[_CurrentFrame], "Shadow pass");
+
 	std::array<vk::ClearValue, 1> clearValues;
 	clearValues[0] = vk::ClearDepthStencilValue(1.0f, 0);
 
@@ -535,8 +537,6 @@ void Renderer::BuildShadowCommandBuffers()
 		vk::SubpassContents::eInline
 	);
 
-	auto dim = _Surface.GetWindowDimensions();
-
 	_ShadowCommandBuffers[_CurrentFrame].bindDescriptorSets(
 		vk::PipelineBindPoint::eGraphics,
 		_Scene->_Materials.at("shadow")->GetPipelineLayout(),
@@ -549,7 +549,8 @@ void Renderer::BuildShadowCommandBuffers()
 	_ShadowCommandBuffers[_CurrentFrame].bindPipeline(vk::PipelineBindPoint::eGraphics, _Scene->_Materials.at("shadow")->GetPipeline());
 
 	for (const auto &mat : _Scene->_Materials) {
-		if (mat.second->_CastShadow) {
+		if (mat.second->_CastShadow && _Scene->_Objects[mat.first].size() > 0) {
+			_Device.StartMarker(_ShadowCommandBuffers[_CurrentFrame], mat.first);
 			for (const auto &object : _Scene->_Objects[mat.first]) {
 				_ShadowCommandBuffers[_CurrentFrame].bindVertexBuffers(0, { object._Mesh._VertexBuffer.GetBuffer() }, { 0 });
 
@@ -566,16 +567,19 @@ void Renderer::BuildShadowCommandBuffers()
 
 				_ShadowCommandBuffers[_CurrentFrame].draw(object._Mesh._Vertices.size(), 1, 0, 0);
 			}
+			_Device.EndMarker(_ShadowCommandBuffers[_CurrentFrame]);
 		}
 	}
 
 	_ShadowCommandBuffers[_CurrentFrame].endRenderPass();
+	_Device.EndMarker(_ShadowCommandBuffers[_CurrentFrame]);
 	_ShadowCommandBuffers[_CurrentFrame].end();
 }
 
 void Renderer::BuildCommandBuffers()
 {	
 	_CommandBuffers[_CurrentFrame].begin({ vk::CommandBufferUsageFlagBits::eSimultaneousUse });
+	_Device.StartMarker(_CommandBuffers[_CurrentFrame], "Color Render");
 
 	std::array<vk::ClearValue, 2> clearValues;
 	clearValues[0] = vk::ClearColorValue(std::array<float, 4>{ 0.0f, 0.0f, 0.0f, 1.0f });
@@ -603,28 +607,33 @@ void Renderer::BuildCommandBuffers()
 	);
 
 	for (const auto &mat : _Scene->_Materials) {
-		_CommandBuffers[_CurrentFrame].bindPipeline(vk::PipelineBindPoint::eGraphics, mat.second->GetPipeline());
+		if (_Scene->_Objects[mat.first].size() > 0) {
+			_Device.StartMarker(_CommandBuffers[_CurrentFrame], mat.first);
+			_CommandBuffers[_CurrentFrame].bindPipeline(vk::PipelineBindPoint::eGraphics, mat.second->GetPipeline());
 
 
-		for (const auto &object : _Scene->_Objects[mat.first]) {
-			_CommandBuffers[_CurrentFrame].bindVertexBuffers(0, { object._Mesh._VertexBuffer.GetBuffer() }, { 0 });
+			for (const auto &object : _Scene->_Objects[mat.first]) {
+				_CommandBuffers[_CurrentFrame].bindVertexBuffers(0, { object._Mesh._VertexBuffer.GetBuffer() }, { 0 });
 
-			_CommandBuffers[_CurrentFrame].bindDescriptorSets(
-				vk::PipelineBindPoint::eGraphics,
-				mat.second->GetPipelineLayout(),
-				0,
-				{
-					_Scene->GetDescriptorSet(_CurrentFrame),
-					object.GetDescriptorSet(_CurrentFrame)
-				},
-				{ object._DynamicIndex * static_cast<uint32_t>(Object::dynamicAlignement) }
-			);
+				_CommandBuffers[_CurrentFrame].bindDescriptorSets(
+					vk::PipelineBindPoint::eGraphics,
+					mat.second->GetPipelineLayout(),
+					0,
+					{
+						_Scene->GetDescriptorSet(_CurrentFrame),
+						object.GetDescriptorSet(_CurrentFrame)
+					},
+					{ object._DynamicIndex * static_cast<uint32_t>(Object::dynamicAlignement) }
+				);
 
-			_CommandBuffers[_CurrentFrame].draw(object._Mesh._Vertices.size(), 1, 0, 0);
+				_CommandBuffers[_CurrentFrame].draw(object._Mesh._Vertices.size(), 1, 0, 0);
+			}
+			_Device.EndMarker(_CommandBuffers[_CurrentFrame]);
 		}
 	}
 
 	_CommandBuffers[_CurrentFrame].endRenderPass();
+	_Device.EndMarker(_CommandBuffers[_CurrentFrame]);
 	_CommandBuffers[_CurrentFrame].end();
 }
 

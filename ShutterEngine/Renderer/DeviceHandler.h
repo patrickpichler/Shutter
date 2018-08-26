@@ -33,13 +33,16 @@ public:
 	// Return a device with the first suitable Vulkan physical device
 	static Device GetDevice(const vk::Instance &instance, const DeviceRequestInfo& info, optional_surface surface);
 
-	void Init(const DeviceRequestInfo& info, optional_surface surface);
+	void Init(DeviceRequestInfo& info, optional_surface surface);
 	void Clean();
 
 
 	std::set<uint32_t> GetQueueIndexSet();
 
 	const bool IsSuitable(const DeviceRequestInfo& info, optional_surface surface) const;
+
+	void StartMarker(const vk::CommandBuffer &cmdBuffer, const std::string &name);
+	void EndMarker(const vk::CommandBuffer &cmdBuffer);
 
 
 	const vk::Device& GetDevice() const {
@@ -78,4 +81,8 @@ private:
 	// Queues currently on the device
 	std::vector<vk::QueueFamilyProperties> _QueueFamilyProperties;
 	std::map<E_QUEUE_TYPE, Queue> _Queues;
+
+	bool _SupportDebugMarkers = false;
+	PFN_vkCmdDebugMarkerBeginEXT pfnCmdDebugMarkerBegin;
+	PFN_vkCmdDebugMarkerEndEXT  pfnCmdDebugMarkerEnd;
 };
