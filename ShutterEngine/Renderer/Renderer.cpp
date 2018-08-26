@@ -548,22 +548,25 @@ void Renderer::BuildShadowCommandBuffers()
 	);
 	_ShadowCommandBuffers[_CurrentFrame].bindPipeline(vk::PipelineBindPoint::eGraphics, _Scene->_Materials.at("shadow")->GetPipeline());
 
+	for (const auto &mat : _Scene->_Materials) {
+		if (mat.second->_CastShadow) {
+			for (const auto &object : _Scene->_Objects[mat.first]) {
+				_ShadowCommandBuffers[_CurrentFrame].bindVertexBuffers(0, { object._Mesh._VertexBuffer.GetBuffer() }, { 0 });
 
-	for (const auto &object : _Scene->_Objects["basic"]) {
-		_ShadowCommandBuffers[_CurrentFrame].bindVertexBuffers(0, { object._Mesh._VertexBuffer.GetBuffer() }, { 0 });
+				_ShadowCommandBuffers[_CurrentFrame].bindDescriptorSets(
+					vk::PipelineBindPoint::eGraphics,
+					_Scene->_Materials.at("shadow")->GetPipelineLayout(),
+					0,
+					{
+						_Scene->GetDescriptorSet(_CurrentFrame),
+						object.GetDescriptorSet(_CurrentFrame)
+					},
+					{ object._DynamicIndex * static_cast<uint32_t>(Object::dynamicAlignement) }
+				);
 
-		_ShadowCommandBuffers[_CurrentFrame].bindDescriptorSets(
-			vk::PipelineBindPoint::eGraphics,
-			_Scene->_Materials.at("shadow")->GetPipelineLayout(),
-			0,
-			{
-				_Scene->GetDescriptorSet(_CurrentFrame),
-				object.GetDescriptorSet(_CurrentFrame)
-			},
-			{ object._DynamicIndex * static_cast<uint32_t>(Object::dynamicAlignement) }
-		);
-
-		_ShadowCommandBuffers[_CurrentFrame].draw(object._Mesh._Vertices.size(), 1, 0, 0);
+				_ShadowCommandBuffers[_CurrentFrame].draw(object._Mesh._Vertices.size(), 1, 0, 0);
+			}
+		}
 	}
 
 	_ShadowCommandBuffers[_CurrentFrame].endRenderPass();

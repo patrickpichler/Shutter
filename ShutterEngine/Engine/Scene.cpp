@@ -68,6 +68,8 @@ void Scene::Load(const std::string &name, Device *device, const vk::CommandPool 
 
 		std::string name = config["materials"][i]["name"].as<std::string>();
 
+		bool CastShadow = config["materials"][i]["castShadow"].IsDefined();
+
 		// Find the type
 		std::string pipeline = config["materials"][i]["pipeline"].as<std::string>();
 		if (pipeline == "basic") {
@@ -76,6 +78,7 @@ void Scene::Load(const std::string &name, Device *device, const vk::CommandPool 
 			mat->BindShader(vert);
 			mat->BindShader(frag);
 			mat->CreatePipeline(renderPass);
+			mat->_CastShadow = CastShadow;
 			_Materials.insert(std::pair<std::string, Material*>(name, mat));
 		}
 		else if (pipeline == "cubemap") {
@@ -84,6 +87,7 @@ void Scene::Load(const std::string &name, Device *device, const vk::CommandPool 
 			mat->BindShader(vert);
 			mat->BindShader(frag);
 			mat->CreatePipeline(renderPass);
+			mat->_CastShadow = CastShadow;
 			_Materials.insert(std::pair<std::string, Material*>(name, mat));
 		}
 		else if (pipeline == "shadow") {
@@ -92,6 +96,7 @@ void Scene::Load(const std::string &name, Device *device, const vk::CommandPool 
 			mat->BindShader(vert);
 			mat->BindShader(frag);
 			mat->CreatePipeline(shadowPass);
+			mat->_CastShadow = CastShadow;
 			_Materials.insert(std::pair<std::string, Material*>(name, mat));
 		}
 		_Objects.insert(std::pair<std::string, std::vector<Object>>(name, std::vector<Object>()));
@@ -245,6 +250,16 @@ void Scene::ReloadShader(const vk::RenderPass &renderPass, const vk::Extent2D &s
 		_Materials.at("bump")->BindShader(newShader);
 	}
 	_Materials.at("bump")->ReloadPipeline(renderPass, screenSize.width, screenSize.height);
+
+	shaders = _Materials.at("transparent")->GetShaderList();
+	_Materials.at("transparent")->ClearShaders();
+
+	for (auto &shader : shaders) {
+		Shader newShader(_Device, shader._Name, shader._Filename, shader._Stage, shader._EntryPoint);
+		shader.Clean();
+		_Materials.at("transparent")->BindShader(newShader);
+	}
+	_Materials.at("transparent")->ReloadPipeline(renderPass, screenSize.width, screenSize.height);
 }
 
 void Scene::CreateDescriptorSets(Device *device, const uint32_t nbImages)

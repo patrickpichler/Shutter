@@ -39,6 +39,8 @@ public:
 		return _PipelineLayout;
 	}
 
+	bool _CastShadow = false;
+
 protected:
 	Device *_Device;
 	Scene *_Scene;
