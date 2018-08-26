@@ -10,7 +10,7 @@ foreach(loop_var ${SRC_FOLDERS})
 
     source_group("${loop_var}" FILES ${SOURCE} ${HEADER})
 
-    set(SOURCE_GLOBAL ${SOURCE_GLOBAL} ${SOURCE} ${HEADER} CACHE INTERNAL "")
+    set(SOURCE_GLOBAL ${SOURCE_GLOBAL} ${SOURCE} ${HEADER} ${CMAKE_CURRENT_SOURCE_DIR}/App.h CACHE INTERNAL "")
 endforeach()
 
 
