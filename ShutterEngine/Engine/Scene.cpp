@@ -106,7 +106,7 @@ void Scene::Load(const std::string &name, Device *device, const vk::CommandPool 
 	//_Models.resize(config["models"].size());
 	for (int i = 0; i < config["models"].size(); ++i) {
 		std::string filename = config["models"][i]["filename"].as<std::string>();
-		std::unordered_map<std::string, Mesh> temp = Mesh::Load(device, root + "models/" + filename, root);
+		std::unordered_map<std::string, Mesh> temp = Mesh::Load(device, root + "models/" + filename, root, cmdPool);
 		_Models.insert(temp.begin(), temp.end());
 	}
 

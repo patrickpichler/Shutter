@@ -36,8 +36,8 @@ class Mesh {
 public:
 	Mesh(){}
 	Mesh(Device *device);
-	static std::unordered_map<std::string, Mesh> Load(Device  *device, const std::string &filename, const std::string &root);
-	void Load(const tinyobj::shape_t &shape, const tinyobj::attrib_t attrib);
+	static std::unordered_map<std::string, Mesh> Load(Device  *device, const std::string &filename, const std::string &root, const vk::CommandPool &cmdPool);
+	void Load(const tinyobj::shape_t &shape, const tinyobj::attrib_t attrib, const vk::CommandPool &cmdPool);
 
 	void Clean();
 

@@ -7,7 +7,7 @@ Mesh::Mesh(Device * device) :
 {
 }
 
-std::unordered_map<std::string, Mesh> Mesh::Load(Device *device, const std::string &filename, const std::string &root)
+std::unordered_map<std::string, Mesh> Mesh::Load(Device *device, const std::string &filename, const std::string &root, const vk::CommandPool &cmdPool)
 {
 	//std::ofstream file(filename + ".txt");
 
@@ -22,7 +22,7 @@ std::unordered_map<std::string, Mesh> Mesh::Load(Device *device, const std::stri
 
 	for (size_t i = 0; i < shapes.size(); ++i) {
 		Mesh tempMesh(device);
-		tempMesh.Load(shapes.at(i), attrib);
+		tempMesh.Load(shapes.at(i), attrib, cmdPool);
 
 
 
@@ -50,7 +50,7 @@ std::unordered_map<std::string, Mesh> Mesh::Load(Device *device, const std::stri
 	return meshes;
 }
 
-void Mesh::Load(const tinyobj::shape_t &shape, const tinyobj::attrib_t attrib)
+void Mesh::Load(const tinyobj::shape_t &shape, const tinyobj::attrib_t attrib, const vk::CommandPool &cmdPool)
 {
 	for (const auto& index : shape.mesh.indices) {
 		Vertex vertex = {};
@@ -82,8 +82,13 @@ void Mesh::Load(const tinyobj::shape_t &shape, const tinyobj::attrib_t attrib)
 
 	GenerateTangents();
 
-	_VertexBuffer = Buffer(_Device, vk::BufferUsageFlagBits::eVertexBuffer, sizeof(Vertex) * _Vertices.size());
-	_VertexBuffer.Copy(_Vertices.data(), sizeof(Vertex) * _Vertices.size());
+	Buffer stagingBuffer = Buffer(_Device, vk::BufferUsageFlagBits::eVertexBuffer, sizeof(Vertex) * _Vertices.size());
+	stagingBuffer.Copy(_Vertices.data(), sizeof(Vertex) * _Vertices.size());
+
+	_VertexBuffer = Buffer(_Device, vk::BufferUsageFlagBits::eVertexBuffer, sizeof(Vertex) * _Vertices.size(), vk::SharingMode::eExclusive, vk::MemoryPropertyFlagBits::eDeviceLocal);
+	stagingBuffer.Transfer(_VertexBuffer, cmdPool);
+
+	stagingBuffer.Clean();
 }
 
 void Mesh::Clean()

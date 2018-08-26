@@ -11,7 +11,8 @@ public:
 		Device *device,
 		const vk::BufferUsageFlagBits usage,
 		const size_t size,
-		const vk::SharingMode sharingMode = vk::SharingMode::eExclusive
+		const vk::SharingMode sharingMode = vk::SharingMode::eExclusive,
+		vk::MemoryPropertyFlags memoryFlags = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent
 	);
 	//Buffer(const Buffer& buffer) :
 	//	_Device(buffer._Device),
@@ -35,6 +36,7 @@ public:
 	}
 
 	void Copy(void *data, const size_t size);
+	void Transfer(const Buffer &dstBuffer, const vk::CommandPool &cmdPool);
 
 	void Clean();
 
@@ -52,4 +54,5 @@ protected:
 
 	vk::Buffer _Buffer;
 	vk::DeviceMemory _Memory;
+	size_t _Size;
 };

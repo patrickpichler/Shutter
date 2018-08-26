@@ -9,7 +9,8 @@ Buffer::Buffer(
 	Device *device,
 	const vk::BufferUsageFlagBits usage,
 	const size_t size,
-	const vk::SharingMode sharingMode
+	const vk::SharingMode sharingMode,
+	vk::MemoryPropertyFlags memoryFlags
 ):
 	_Device(device)
 {
@@ -21,7 +22,7 @@ Buffer::Buffer(
 
 	vk::MemoryAllocateInfo memoryInfo;
 	memoryInfo.allocationSize = memoryRequirements.size;
-	memoryInfo.memoryTypeIndex = findMemoryType(*_Device, memoryRequirements.memoryTypeBits, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+	memoryInfo.memoryTypeIndex = findMemoryType(*_Device, memoryRequirements.memoryTypeBits, memoryFlags);
 
 	_Memory = _Device->GetDevice().allocateMemory(memoryInfo);
 	_Device->GetDevice().bindBufferMemory(_Buffer, _Memory, 0);
@@ -29,6 +30,7 @@ Buffer::Buffer(
 
 void Buffer::Copy(void * data, const size_t size)
 {
+	_Size = size;
 	void *deviceData;
 	deviceData = _Device->GetDevice().mapMemory(_Memory, 0, size, {});
 	std::memcpy(deviceData, data, size);
@@ -38,6 +40,16 @@ void Buffer::Copy(void * data, const size_t size)
 	_Device->GetDevice().flushMappedMemoryRanges(memoryRanges);
 
 	_Device->GetDevice().unmapMemory(_Memory);
+}
+
+void Buffer::Transfer(const Buffer & dstBuffer, const vk::CommandPool &cmdPool)
+{
+	vk::CommandBuffer cmd = BeginSingleUseCommandBuffer(*_Device, cmdPool);
+
+	vk::BufferCopy region(0, 0, _Size);
+	cmd.copyBuffer(_Buffer, dstBuffer._Buffer, 1, &region);
+
+	EndSingleUseCommandBuffer(cmd, *_Device, cmdPool);
 }
 
 void Buffer::Clean()
