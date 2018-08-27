@@ -51,7 +51,7 @@ void Scene::Load(const std::string &name, Device *device, const vk::CommandPool 
 		glm::vec3 position = config["cameras"][0]["position"].as<glm::vec3>();
 		float fov = config["cameras"][0]["fov"].as<float>();
 
-		_Camera = Camera(name, fov, 1024, 768, position, glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 1.0));
+		_Camera = Camera(name, fov, 1024, 768, position, glm::vec3(1.0, 0.0, 0.0), glm::vec3(0.0, 0.0, 1.0));
 	}
 
 	// Create the camera for the light source
@@ -151,31 +151,34 @@ void Scene::Load(const std::string &name, Device *device, const vk::CommandPool 
 		std::string material = scene["scene"][i]["material"].as<std::string>();
 		Material *materialM = _Materials.at(material);
 
-		glm::vec3 position = scene["scene"][i]["position"].as<glm::vec3>();
-		glm::vec3 rotation = scene["scene"][i]["rotation"].as<glm::vec3>();
-		glm::vec3 scale = scene["scene"][i]["scale"].as<glm::vec3>();
+		int z[] = { -1, 0, 1 };
+		for (int k = 0; k < 3; ++k) {
+			glm::vec3 position = scene["scene"][i]["position"].as<glm::vec3>();
+			glm::vec3 rotation = scene["scene"][i]["rotation"].as<glm::vec3>();
+			glm::vec3 scale = scene["scene"][i]["scale"].as<glm::vec3>();
 
-		_Objects[material].push_back(Object(device, _Models.at(model), materialM, 2));
-		_Objects[material].back()._Position = position;
-		_Objects[material].back()._Rotation = rotation;
-		_Objects[material].back()._Scale = scale;
+			_Objects[material].push_back(Object(device, _Models.at(model), materialM, 2));
+			_Objects[material].back()._Position = position + glm::vec3(0.0, 0.0, z[k]);
+			_Objects[material].back()._Rotation = rotation;
+			_Objects[material].back()._Scale = scale;
 
-		for (int j = 0; j < scene["scene"][i]["textures"].size(); ++j) {
-			if (scene["scene"][i]["textures"]) {
-				int slot = scene["scene"][i]["textures"][j]["slot"].as<int>();
-				std::string name = scene["scene"][i]["textures"][j]["texture"].as<std::string>();
-				Texture texture = _Textures.at(name);
-				_Objects[material].back().AddTexture(slot, texture);
+			for (int j = 0; j < scene["scene"][i]["textures"].size(); ++j) {
+				if (scene["scene"][i]["textures"]) {
+					int slot = scene["scene"][i]["textures"][j]["slot"].as<int>();
+					std::string name = scene["scene"][i]["textures"][j]["texture"].as<std::string>();
+					Texture texture = _Textures.at(name);
+					_Objects[material].back().AddTexture(slot, texture);
+				}
 			}
-		}
 
-		if (material == "basic" || material == "bump" || material == "transparent") {
-			_Objects[material].back().AddTexture(2, shadow);
-		}
+			if (material == "basic" || material == "bump" || material == "transparent") {
+				_Objects[material].back().AddTexture(2, shadow);
+			}
 
-		_Objects[material].back()._DynamicIndex = AddToDynamic(_Objects[material].back());
-		_Objects[material].back().CreateDescriptorSet();
-		_Objects[material].back()._Name = name;
+			_Objects[material].back()._DynamicIndex = AddToDynamic(_Objects[material].back());
+			_Objects[material].back().CreateDescriptorSet();
+			_Objects[material].back()._Name = name;
+		}
 	}
 
 	UploadDynamic();

@@ -6,16 +6,18 @@ Camera::Camera(const std::string &name, const float fov, const uint16_t width, c
 	_FOV(fov),
 	_Width(width),
 	_Height(height),
-	_Front(direction),
+	_Forward(direction),
 	_Up(up)
 {
-	_Right = glm::cross(_Front, _Up);
+	_Right = glm::cross(_Forward, _Up);
 
 	_TranslationSpeed = 0.13f;
 	_RotationSpeed = 0.01f;
 
 	_HorizontalAngle = 0.f;
 	_VerticalAngle = 0.f;
+
+	_Frustrum.GenerateFrustrum(*this);
 }
 
 void Camera::Update(const double mouseX, const double mouseY, const Direction &dir)
@@ -36,15 +38,15 @@ void Camera::Update(const double mouseX, const double mouseY, const Direction &d
 	_Up = glm::cross(_Right, direction);
 
 
-	_Front = glm::normalize(direction);
+	_Forward = glm::normalize(direction);
 
 	glm::vec3 movement = { 0.0f, 0.0f, 0.0f };
 
 	if (dir.Up) {
-		movement = _Front * _TranslationSpeed;
+		movement = _Forward * _TranslationSpeed;
 	}
 	else if (dir.Down) {
-		movement = _Front * -_TranslationSpeed;
+		movement = _Forward * -_TranslationSpeed;
 	}
 	if (dir.Left) {
 		movement += _Right * -_TranslationSpeed;
@@ -54,6 +56,8 @@ void Camera::Update(const double mouseX, const double mouseY, const Direction &d
 	}
 
 	_Position += movement;
+
+	_Frustrum.GenerateFrustrum(*this);
 }
 
 CameraUniformData Camera::GetUniformData()
@@ -68,12 +72,12 @@ CameraUniformData Camera::GetUniformData()
 
 glm::mat4 Camera::GetProjection() const
 {
-	glm::mat4 proj = glm::perspective(glm::radians(_FOV), float(_Width) / float(_Height), 0.1f, 100.0f);
+	glm::mat4 proj = glm::perspective(glm::radians(_FOV), float(_Width) / float(_Height), _Near, _Far);
 	proj[1][1] *= -1;
 	return proj;
 }
 
 glm::mat4 Camera::GetView() const
 {
-	return glm::lookAt(_Position, _Position + _Front, _Up);
+	return glm::lookAt(_Position, _Position + _Forward, _Up);
 }

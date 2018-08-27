@@ -1,6 +1,7 @@
 #pragma once
 #include "SceneObject.h"
 #include <glm/glm.hpp>
+#include "Frustrum.h"
 
 
 struct CameraUniformData {
@@ -30,16 +31,21 @@ public:
 
 	uint16_t _Width;
 	uint16_t _Height;
-
-private:
 	float _FOV;
 
-	glm::vec3 _Front;
+	float _Near = 0.1f;
+	float _Far = 100.0f;
+
+	glm::vec3 _Forward;
 	glm::vec3 _Up;
 	glm::vec3 _Right;
 
 	float _TranslationSpeed;
 	float _RotationSpeed;
+
+	Frustrum _Frustrum;
+
+private:
 
 	double _HorizontalAngle;
 	double _VerticalAngle;

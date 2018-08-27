@@ -8,6 +8,11 @@
 #include "Renderer/DeviceHandler.h"
 #include "Renderer/Buffer.h"
 
+struct BoundingBox {
+	glm::vec3 _Max;
+	glm::vec3 _Min;
+};
+
 struct Vertex {
 	glm::vec3 position;
 	glm::vec3 normal;
@@ -38,12 +43,15 @@ public:
 	Mesh(Device *device);
 	static std::unordered_map<std::string, Mesh> Load(Device  *device, const std::string &filename, const std::string &root, const vk::CommandPool &cmdPool);
 	void Load(const tinyobj::shape_t &shape, const tinyobj::attrib_t attrib, const vk::CommandPool &cmdPool);
-
+	void Upload(const vk::CommandPool &cmdPool);
+	void Upload();
 	void Clean();
 
 public:
 	std::vector<Vertex> _Vertices;
 	std::vector<uint32_t> _Indices;
+
+	glm::vec3 _BoxMax, _BoxMin;
 
 	Buffer _VertexBuffer;
 

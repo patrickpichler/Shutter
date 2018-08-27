@@ -27,6 +27,8 @@ public:
 
 	const glm::mat4 GetModelMatrix() const;
 
+	const BoundingBox GetBoundingBox() const;
+
 private:
 	Material *_Material;
 

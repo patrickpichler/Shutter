@@ -52,6 +52,9 @@ std::unordered_map<std::string, Mesh> Mesh::Load(Device *device, const std::stri
 
 void Mesh::Load(const tinyobj::shape_t &shape, const tinyobj::attrib_t attrib, const vk::CommandPool &cmdPool)
 {
+	_BoxMax = glm::vec3(0.0f, 0.0f, 0.0f);
+	_BoxMin = glm::vec3(0.0f, 0.0f, 0.0f);
+
 	for (const auto& index : shape.mesh.indices) {
 		Vertex vertex = {};
 
@@ -60,6 +63,16 @@ void Mesh::Load(const tinyobj::shape_t &shape, const tinyobj::attrib_t attrib, c
 			attrib.vertices[3 * index.vertex_index + 1],
 			attrib.vertices[3 * index.vertex_index + 2]
 		};
+
+		// Compute bounding box max point
+		_BoxMax.x = std::max(_BoxMax.x, vertex.position.x);
+		_BoxMax.y = std::max(_BoxMax.y, vertex.position.y);
+		_BoxMax.z = std::max(_BoxMax.z, vertex.position.z);
+
+		// Compute bounding box min point
+		_BoxMin.x = std::min(_BoxMax.x, vertex.position.x);
+		_BoxMin.y = std::min(_BoxMax.y, vertex.position.y);
+		_BoxMin.z = std::min(_BoxMax.z, vertex.position.z);
 
 		if (attrib.normals.size() > 0) {
 			vertex.normal = {
@@ -82,6 +95,12 @@ void Mesh::Load(const tinyobj::shape_t &shape, const tinyobj::attrib_t attrib, c
 
 	GenerateTangents();
 
+	Upload(cmdPool);
+}
+
+void Mesh::Upload(const vk::CommandPool & cmdPool)
+{
+
 	Buffer stagingBuffer = Buffer(_Device, vk::BufferUsageFlagBits::eVertexBuffer, sizeof(Vertex) * _Vertices.size());
 	stagingBuffer.Copy(_Vertices.data(), sizeof(Vertex) * _Vertices.size());
 
@@ -89,6 +108,12 @@ void Mesh::Load(const tinyobj::shape_t &shape, const tinyobj::attrib_t attrib, c
 	stagingBuffer.Transfer(_VertexBuffer, cmdPool);
 
 	stagingBuffer.Clean();
+}
+
+void Mesh::Upload()
+{
+	_VertexBuffer = Buffer(_Device, vk::BufferUsageFlagBits::eVertexBuffer, sizeof(Vertex) * _Vertices.size());
+	_VertexBuffer.Copy(_Vertices.data(), sizeof(Vertex) * _Vertices.size());
 }
 
 void Mesh::Clean()

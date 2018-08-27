@@ -33,7 +33,7 @@ void Renderer::Init(GLFWwindow* window, const uint16_t width, const uint16_t hei
 	_GUI.Init(&_Device, _Window, _Surface._Surface, _ScreenSize, _Instance, _Surface._Swapchain, _CommandPool);
 	CreateFramebuffers();
 
-	_Scene->Load("sponza", &_Device, _CommandPool, _RenderPass, _ShadowRenderPass, _ShadowTexture);
+	_Scene->Load("apple", &_Device, _CommandPool, _RenderPass, _ShadowRenderPass, _ShadowTexture);
 	_GUI.tree._Scene = _Scene;
 
 	CreateCommandBuffers();
@@ -606,6 +606,8 @@ void Renderer::BuildCommandBuffers()
 		{}
 	);
 
+	Camera cam("camTestFrustrum", 45.0f, 1024, 768, glm::vec3(0.0,0.0,0.0), glm::vec3(0.0, 1.0,0.0), glm::vec3(0.0,0.0,1.0));
+
 	for (const auto &mat : _Scene->_Materials) {
 		if (_Scene->_Objects[mat.first].size() > 0) {
 			_Device.StartMarker(_CommandBuffers[_CurrentFrame], mat.first);
@@ -613,20 +615,23 @@ void Renderer::BuildCommandBuffers()
 
 
 			for (const auto &object : _Scene->_Objects[mat.first]) {
-				_CommandBuffers[_CurrentFrame].bindVertexBuffers(0, { object._Mesh._VertexBuffer.GetBuffer() }, { 0 });
+				// Perform frustrum culling
+				if (cam._Frustrum.TestFrustrum(object.GetBoundingBox()) || mat.first == "cubemap") {
+					_CommandBuffers[_CurrentFrame].bindVertexBuffers(0, { object._Mesh._VertexBuffer.GetBuffer() }, { 0 });
 
-				_CommandBuffers[_CurrentFrame].bindDescriptorSets(
-					vk::PipelineBindPoint::eGraphics,
-					mat.second->GetPipelineLayout(),
-					0,
-					{
-						_Scene->GetDescriptorSet(_CurrentFrame),
-						object.GetDescriptorSet(_CurrentFrame)
-					},
-					{ object._DynamicIndex * static_cast<uint32_t>(Object::dynamicAlignement) }
-				);
+					_CommandBuffers[_CurrentFrame].bindDescriptorSets(
+						vk::PipelineBindPoint::eGraphics,
+						mat.second->GetPipelineLayout(),
+						0,
+						{
+							_Scene->GetDescriptorSet(_CurrentFrame),
+							object.GetDescriptorSet(_CurrentFrame)
+						},
+						{ object._DynamicIndex * static_cast<uint32_t>(Object::dynamicAlignement) }
+					);
 
-				_CommandBuffers[_CurrentFrame].draw(object._Mesh._Vertices.size(), 1, 0, 0);
+					_CommandBuffers[_CurrentFrame].draw(object._Mesh._Vertices.size(), 1, 0, 0);
+				}
 			}
 			_Device.EndMarker(_CommandBuffers[_CurrentFrame]);
 		}

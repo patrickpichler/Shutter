@@ -87,6 +87,18 @@ const glm::mat4 Object::GetModelMatrix() const
 	return model;
 }
 
+const BoundingBox Object::GetBoundingBox() const
+{
+	BoundingBox tempBox;
+	tempBox._Max = GetModelMatrix() * glm::vec4(_Mesh._BoxMax, 1.0);
+	tempBox._Min = GetModelMatrix() * glm::vec4(_Mesh._BoxMin, 1.0);
+	if (_Name == "sponza_275") {
+		return tempBox;
+	}
+
+	return tempBox;
+}
+
 Buffer Object::DynamicBuffer = Buffer();
 uint32_t Object::dynamicAlignement = 0;
 Object::UboDynamic Object::uboDynamic = {};

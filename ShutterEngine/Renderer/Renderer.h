@@ -107,4 +107,6 @@ private:
 
 	long long _FrameDuration;
 	std::chrono::steady_clock::time_point start;
+
+	Camera cam;
 };
